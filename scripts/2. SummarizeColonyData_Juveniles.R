@@ -16,7 +16,7 @@ jwd<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/CoralBelt_Juveniles_raw
 #Colony fragments and scleractinans are subsetted in the functions 
 #Add a column for adult fragments so we can remove them from the dataset later (-1 indicates fragment)
 jwd$Fragment <- 0 # you need to add this column so that you can use the site level functions correctly
-jwd$DATE_ <- as.Date(jwd$DATE_, format = "%Y-%m-%d")
+jwd$DATE_ <- mdy(jwd$DATE_)
 jwd$METHOD<-"DIVER"
 jwd$ANALYST<-jwd$DIVER
 jwd$SEGAREA<-jwd$SEGLENGTH*jwd$SEGWIDTH
@@ -92,17 +92,18 @@ View(site.data.gen2)
 
 #Change all special missions to exclude flag =-1, right now they are 0. Then exclude these sites
 #Exclude PRIA 2017 sites because we want similar time intervals following bleaching events for all regions
+site.data.gen2$MISSIONID<-as.factor(site.data.gen2$MISSIONID)
 levels(site.data.gen2$MISSIONID)
 site.data.gen2<-site.data.gen2[!site.data.gen2$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
 site.data.gen2$Year_Island<-paste(site.data.gen2$OBS_YEAR,site.data.gen2$ISLAND,sep="_")
 site.data.gen2<-site.data.gen2[!site.data.gen2$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
 
-site.data.gen2<-droplevels(site.data.gen2);levels(site.data.gen2$MISSIONID)
+site.data.gen2<-droplevels(site.data.gen2);levels(site.data.gen2$MISSIONID) #special missions should be gone
 View(site.data.gen2)
 
 #Convert Protected Reef Slope to Forereef and Subset just Forereef sites
 site.data.gen2$REEF_ZONE<-ifelse(site.data.gen2$REEF_ZONE=="Protected Slope","Forereef",as.character(site.data.gen2$REEF_ZONE))
-site.data.gen2<-subset(site.data.gen2,REEF_ZONE=="Forereef")
+site.data.gen2<-subset(site.data.gen2,REEF_ZONE=="Forereef") #only include forereef
 
 #Add up NH for forereef and protected reef sites
 tmp<-unique(site.data.gen2[,c("OBS_YEAR","SEC_NAME","REEF_ZONE","DEPTH_BIN","NH")])
@@ -152,6 +153,7 @@ head(site.sw)
 site.swS<-dplyr::filter(site.sw,GENUS_CODE=="SSSS")#only include total scleractinans
 
 length(unique(site.swS$SITE))
+
 #remove strata that have less than 2 sites
 site.swS<-subset(site.swS,n>1)
 summary(site.swS$n)
@@ -163,36 +165,37 @@ site.swS %>%
   group_by(SITE) %>% 
   filter(n()>1)
 
-
+#Save site-level data
 write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights_AllYears.csv",row.names = F)
 
 
-# GENERATE DATA FOR TEMPORAL ANALYSIS WITH 2013 MHI---------------------------------------------------
-site.swS$STRATANAME<- paste(site.swS$SEC_NAME,site.swS$REEF_ZONE,site.swS$DEPTH_BIN,sep="_")
-st.list<-ddply(site.swS,.(OBS_YEAR,REGION,ISLAND,SEC_NAME,STRATANAME),summarize,n=length(unique(SITE)))
+# GENERATE DATA FOR TEMPORAL ANALYSIS ---------------------------------------------------
+site.swS$STRATANAME<- paste(site.swS$SEC_NAME,site.swS$REEF_ZONE,site.swS$DEPTH_BIN,sep="_") #create strata column
+st.list<-ddply(site.swS,.(OBS_YEAR,REGION,ISLAND,SEC_NAME,STRATANAME),summarize,n=length(unique(SITE)))#number of sites/stratum
 
 #Generate list of strata that were surveyed in all years for a given region and had at least 2 sites/stratum
-st.list_w<-dcast(st.list, formula=REGION+ISLAND+SEC_NAME+STRATANAME~ OBS_YEAR, value.var="n",fill=0)
+st.list_w<-reshape2::dcast(st.list, formula=REGION+ISLAND+SEC_NAME+STRATANAME~ OBS_YEAR, value.var="n",fill=0)
 dCOLS<-c("2013","2014","2015","2016","2017","2018","2019")
 st.list_w$year_n<-rowSums(st.list_w[,dCOLS] > 0, na.rm=T) #count # of years of data
-st.list_w2<-subset(st.list_w,REGION %in% c("NMI","SMI","LINE","PHOENIX","WAKE","SAMOA") & year_n>=2)
-st.list_w3<-subset(st.list_w,REGION %in% c("NWHI","MHI") & year_n>=3)
-st.list_w4<-rbind(st.list_w2,st.list_w3)
+st.list_w2<-subset(st.list_w,REGION %in% c("NMI","SMI","LINE","PHOENIX","WAKE","SAMOA") & year_n>=2) #subset strata that were surveyed twice for these regions
+st.list_w3<-subset(st.list_w,REGION %in% c("NWHI","MHI") & year_n>=3) #subset strata that were surveyed three times for these regions
+st.list_w4<-rbind(st.list_w2,st.list_w3) #combine strata list to use for temporal analysis
 
 head(st.list_w4);st.list_w4<-droplevels(st.list_w4) #generate the list
 
 data.gen_temp<-site.swS[site.swS$STRATANAME %in% c(st.list_w4$STRATANAME),] #Subset juv data to only include strata of interest 
 isl.drop<-c("Maui","Niihau","Kure","French Frigate","Midway","Pearl & Hermes","Lisianski") #excluding all NWHI islands- poor sampling across years
 data.temporal<-data.gen_temp[!data.gen_temp$ISLAND %in% c(isl.drop),] #Remove islands that don't have enough strata sampled across the years 
-View(data.temporal)
+nrow(data.temporal)
 
 write.csv(data.temporal,file="T:/Benthic/Projects/Juvenile Project/JuvDen_Temporal.csv",row.names = FALSE)
 
-# Temporal Trends in Juveniles --------------------------------------------
+# TEMPORAL Patterns in Juveniles- Analysis and Plots --------------------------------------------
 
 #Use survey package to calculate mean SE and conduct statistical analyses
 data.temporal$OBS_YEAR<-as.factor(data.temporal$OBS_YEAR)
-#des<-svydesign(id=~1, strata=~ANALYSIS_YEAR+REGION+ISLAND+SEC_NAME+DB_RZ, weights=~sw,data=data.temporal)
+
+#Create contactenated Strata variable and establish survey design with survey weights
 data.temporal$Strat_conc<-paste(data.temporal$OBS_YEAR, data.temporal$REGION,data.temporal$ISLAND,data.temporal$SEC_NAME,data.temporal$DB_RZ,sep = "_")
 des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=data.temporal)
 
@@ -201,8 +204,6 @@ temp_Rmean<-svyby(~JuvColDen,~OBS_YEAR+REGION,des,svymean)
 
 #Test fixed effects of region and year
 modR<-svyglm(JuvColCount ~ REGION*OBS_YEAR, design=des,offset= TRANSECTAREA_j, family="poisson")
-
-svystdres(modR,stvar="DB_RZ",doplot=TRUE)
 anova(modR)
 
 #Run separate post hoc tests for each region to test for differences between years- I don't care about comparing all possible combinations of year and region
@@ -242,11 +243,11 @@ pvals<-c(0.54507,0.01606,0.00311,0.366,0.312,0.000001,0.176,0.000039,0.305)
 round(p.adjust(pvals, "BH"), 3) #0.568 0.082 0.010 0.447 0.447 0.000 0.447 0.001 0.568
 
 
-# PLOTTING ----------------------------------------------------------------
+# PLOTTING Figure 2 ----------------------------------------------------------------
 
 #bar plot of juv by region by year with post hoc tests 
 temp_Rmean$REGION <- factor(temp_Rmean$REGION, levels = c("MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
-temp_Rmean$ANALYSIS_YEAR<-as.factor(temp_Rmean$ANALYSIS_YEAR)
+temp_Rmean$OBS_YEAR<-as.factor(temp_Rmean$OBS_YEAR)
 #Add Posthoc groupings from glms
 temp_Rmean<- temp_Rmean[order(temp_Rmean$REGION),];temp_Rmean
 temp_Rmean$sig<-c("ab","a","b","a","b","","","","","","","a","b","","")
@@ -279,23 +280,17 @@ p8 <- ggplot(temp_Rmean, aes(x=OBS_YEAR, y=JuvColDen,fill=REGION)) +
             vjust = -0.5) 
 p8
 
-ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Figures/DensityRegionalTemporal.jpg",width=10,height=5)
+ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Figure2.jpg",width=10,height=5)
 
 
 
 # Spatial Trends in Juveniles averaged across years --------------------------------------------
-# R_Y<-c("MHI_2019","NWHI_2017","NMI_2017","SMI_2017","PHOENIX_2018","LINE_2018","SAMOA_2018","WAKE_2017")
-# 
-# site.swS$REGION_YEAR<-paste(site.swS$REGION,site.swS$OBS_YEAR,sep="_")
-# site.swS<-site.swS[site.swS$REGION_YEAR %in% R_Y,] 
-
-
-#Remove 2014 NWHI data because we do not have benthic cover data for this year
+#Remove 2014 NWHI data because we do not have benthic cover data for this year which is needed for the correlative anlaysis
 REGION_YEAR<-c("NWHI_2014")
 
 table(site.swS$REGION,site.swS$OBS_YEAR)
 site.swS$REGION_YEAR<-paste(site.swS$REGION,site.swS$OBS_YEAR,sep="_")
-site.swS<-site.swS[site.swS$REGION_YEAR != REGION_YEAR,]
+site.swS<-site.swS[site.swS$REGION_YEAR != REGION_YEAR,] #remove NWHI 2014 data
 table(site.swS$REGION,site.swS$OBS_YEAR)
 
 
@@ -306,7 +301,7 @@ nrow(site.swS) #total number of sites used in the spatial analysis
 site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
 site.swS$REGION<-as.factor(site.swS$REGION)
 
-#des<-svydesign(id=~1, strata=~OBS_YEAR+REGION+ISLAND+SEC_NAME+DB_RZ, weights=~sw,data=site.swS)
+#Establish survey design
 site.swS$Strat_conc<-paste(site.swS$OBS_YEAR, site.swS$REGION,site.swS$ISLAND,site.swS$SEC_NAME,site.swS$DB_RZ,sep = "_")
 des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=site.swS)
 
@@ -360,7 +355,7 @@ spatialR <- ggplot(spatial_Rmean, aes(x=REGION, y=JuvColDen,fill=REGION)) +
             vjust = -0.5,size = 5) 
 spatialR
 
-ggsave(plot=spatialR,file="T:/Benthic/Projects/Juvenile Project/Figures/DensityRegionalSpatial.jpg",width=10,height=5)
+#ggsave(plot=spatialR,file="T:/Benthic/Projects/Juvenile Project/Figures/DensityRegionalSpatial.jpg",width=10,height=5)
 
 
 spatial_Imean<-svyby(~JuvColDen,~REGION + ISLAND,des,svymean)
@@ -389,7 +384,7 @@ p10 <- ggplot(spatial_Imean, aes(x=reorder(ISLAND,-JuvColDen), y=JuvColDen,color
 p10
 
 
-ggsave(plot=p10,file="T:/Benthic/Projects/Juvenile Project/Figures/DensityIslandSpatial.jpg",width=10,height=5)
+ggsave(plot=p10,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/FigureS2.jpg",width=10,height=5)
 
 
 # Plot Pacific-wide Map most recent Juvenile Density -------------------------
