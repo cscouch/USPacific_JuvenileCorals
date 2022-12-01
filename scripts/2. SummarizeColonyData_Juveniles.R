@@ -16,21 +16,42 @@ jwd<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/CoralBelt_Juveniles_raw
 #Colony fragments and scleractinans are subsetted in the functions 
 #Add a column for adult fragments so we can remove them from the dataset later (-1 indicates fragment)
 jwd$Fragment <- 0 # you need to add this column so that you can use the site level functions correctly
-jwd$DATE_ <- mdy(jwd$DATE_)
+jwd$DATE_ <- ymd(jwd$DATE_)
 jwd$METHOD<-"DIVER"
 jwd$ANALYST<-jwd$DIVER
 jwd$SEGAREA<-jwd$SEGLENGTH*jwd$SEGWIDTH
 
+# #Round depth to nearest 4 decimal places to avoid mergings issues
+# jwd$MIN_DEPTH_M<-round(jwd$MIN_DEPTH_M, 4)
+# jwd$MAX_DEPTH_M<-round(jwd$MAX_DEPTH_M, 4)
+# jwd$LATITUDE<-round(jwd$LATITUDE,7)
+# jwd$LONGITUDE<-round(jwd$LONGITUDE,5)
 
-#Fix 2 sites with incorrect Reef zone and depth bin
+
+#Fix Errors in Data:
+#2 sites with incorrect Reef zone and depth bin
 jwd$REEF_ZONE<-ifelse(jwd$SITE=="HAW-04285","Forereef",as.character(jwd$REEF_ZONE))
 jwd$DEPTH_BIN<-ifelse(jwd$SITE=="FFS-04155","Shallow",as.character(jwd$DEPTH_BIN))
 
-#Convert Protected Slope to Forereef
-jwd$REEF_ZONE<-ifelse(jwd$REEF_ZONE=="Protected Slope","Forereef",as.character(jwd$REEF_ZONE))
+#3 Maug sites miscoded as Lagoon, should be FRF
+mau.sites<-c("MAU-00603","MAU-00539","MAU-00551")
+jwd$REEF_ZONE<-ifelse(jwd$SITE %in% mau.sites,"Forereef",as.character(jwd$REEF_ZONE))
 
 #Remove 2 sites that weren't surveyed for juveniles
 jwd<-jwd[!(jwd$SITE %in% c("OFU-01012","PAG-00596")),]
+
+#Remove special missions (not NCRMP surveys)
+#Change all special missions to exclude flag =-1, right now they are 0. Then exclude these sites
+jwd$MISSIONID<-as.factor(jwd$MISSIONID)
+levels(jwd$MISSIONID)
+jwd<-jwd[!jwd$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
+
+#Exclude PRIA 2017 sites because we want similar time intervals following bleaching events for all regions
+jwd$Year_Island<-paste(jwd$OBS_YEAR,jwd$ISLAND,sep="_")
+jwd<-jwd[!jwd$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
+
+jwd<-droplevels(jwd);levels(jwd$MISSIONID) #special missions should be gone
+View(jwd)
 
 #Dealing with colonies <1cm- divers haven't recorded sub cm colonies consistently through time.
 #Change colonies that are <1cm to NA. I'm not subsetting these data because I need to keep the placeholder in the dataframe in case a site only had colonies <1cm or >5cm
@@ -46,11 +67,15 @@ jwd$TAXONNAME<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,NA,as.character(jwd
 nrow(subset(jwd,COLONYLENGTH>1))
 nrow(subset(jwd,COLONYLENGTH<1)) #should be 0
 
-#Create list of sites with metadata
+
+
+#Create list of sites with metadata - doesn't include depth, lat and long because there are issues with slightly different decimal places that cause issues with merging. merge in later
 SURVEY_SITE<-c("METHOD","MISSIONID","DATE_","SITEVISITID", "OBS_YEAR", "REGION", "REGION_NAME", "ISLAND","ISLANDCODE","SEC_NAME", "SITE","HABITAT_CODE","REEF_ZONE",
-"DEPTH_BIN", "LATITUDE", "LONGITUDE","MIN_DEPTH_M","MAX_DEPTH_M")
+"DEPTH_BIN")
 survey_site<-unique(jwd[,SURVEY_SITE])
 
+n_occur <- data.frame(table(survey_site$SITE)) 
+n_occur[n_occur$Freq > 1,]
 
 # Generate Juvenile Density at the TRANSECT & SITE-LEVEL BY GENUS--------------------------------------------------
 jcd.gen<-Calc_ColDen_Transect(jwd,"GENUS_CODE"); colnames(jcd.gen)[colnames(jcd.gen)=="ColCount"]<-"JuvColCount";colnames(jcd.gen)[colnames(jcd.gen)=="ColDen"]<-"JuvColDen";colnames(jcd.gen)[colnames(jcd.gen)=="TRANSECTAREA"]<-"TRANSECTAREA_j"
@@ -70,13 +95,15 @@ sectors<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_Juvenile
 meta<-left_join(survey_site,sectors)
 nrow(survey_site)
 nrow(meta)
+nrow(subset(site.data.gen2,GENUS_CODE=="SSSS")) #1611 sites
+
+head(survey_site)
 
 
-#Merge site level data and meta data
+#Merge site level data and metadata
 site.data.gen2<-left_join(site.data.gen2,meta)
 site.data.gen2$Juvpres.abs<-ifelse(site.data.gen2$JuvColDen>0,1,0) #add presence/absense column 
-test<-subset(site.data.gen2,GENUS_CODE=="SSSS")
-nrow(test)
+nrow(subset(site.data.gen2,GENUS_CODE=="SSSS")) #should be 1611
 site.data.gen2[which(is.na(site.data.gen2$AREA_HA)),] #The NA values are from special missions and maug Lagoon that will be dropped later in the script - ok
 nrow(meta)
 
@@ -90,22 +117,11 @@ site.data.gen2$SEC_NAME<-ifelse(site.data.gen2$SEC_NAME %in% c("SWA_OPEN","SWA_S
 View(site.data.gen2)
 
 
-#Change all special missions to exclude flag =-1, right now they are 0. Then exclude these sites
-#Exclude PRIA 2017 sites because we want similar time intervals following bleaching events for all regions
-site.data.gen2$MISSIONID<-as.factor(site.data.gen2$MISSIONID)
-levels(site.data.gen2$MISSIONID)
-site.data.gen2<-site.data.gen2[!site.data.gen2$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
-site.data.gen2$Year_Island<-paste(site.data.gen2$OBS_YEAR,site.data.gen2$ISLAND,sep="_")
-site.data.gen2<-site.data.gen2[!site.data.gen2$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
-
-site.data.gen2<-droplevels(site.data.gen2);levels(site.data.gen2$MISSIONID) #special missions should be gone
-View(site.data.gen2)
-
 #Convert Protected Reef Slope to Forereef and Subset just Forereef sites
 site.data.gen2$REEF_ZONE<-ifelse(site.data.gen2$REEF_ZONE=="Protected Slope","Forereef",as.character(site.data.gen2$REEF_ZONE))
 site.data.gen2<-subset(site.data.gen2,REEF_ZONE=="Forereef") #only include forereef
 
-#Add up NH for forereef and protected reef sites
+#Add up NH (number of 250m2 grid areas in stratum) for forereef and protected reef sites
 tmp<-unique(site.data.gen2[,c("OBS_YEAR","SEC_NAME","REEF_ZONE","DEPTH_BIN","NH")])
 
 new.NH<-ddply(tmp,.(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN),
@@ -135,8 +151,8 @@ site.data.gen2$STRATANAME<- paste(site.data.gen2$SEC_NAME,site.data.gen2$REEF_ZO
 site.data.gen2$REGION_YEAR<-paste(site.data.gen2$REGION,site.data.gen2$OBS_YEAR,sep="_")
 site.data.gen2$DB_RZ<- paste(site.data.gen2$REEF_ZONE,site.data.gen2$DEPTH_BIN,sep="_")
 
-# #Remove the 2014 NWHI data
-# site.data.gen2<-site.data.gen2[site.data.gen2$REGION_YEAR !="NWHI_2014",]
+#Remove the 2014 NWHI data - we have very low sampling in 2014 & we do not have benthic cover data for 2014 
+site.data.gen2<-site.data.gen2[site.data.gen2$REGION_YEAR !="NWHI_2014",]
 
 length(unique(site.data.gen2$SITE))
 
@@ -165,6 +181,22 @@ site.swS %>%
   group_by(SITE) %>% 
   filter(n()>1)
 
+#We have 1405 sites for spatial and correlative analysis
+
+#Merge Lat and Long and depths back in
+survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/SURVEY MASTER.csv")
+
+#Use SM coordinates-some coordinates are wrong in data and need to be updated
+colnames(survey_master)[colnames(survey_master)=="LATITUDE_LOV"]<-"LATITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
+colnames(survey_master)[colnames(survey_master)=="LONGITUDE_LOV"]<-"LONGITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
+
+colnames(survey_master)[colnames(survey_master)=="new_MIN_DEPTH_M"]<-"MIN_DEPTH_M" #Change column name
+colnames(survey_master)[colnames(survey_master)=="new_MAX_DEPTH_M"]<-"MAX_DEPTH_M" #Change column name
+
+#merge colony data and survey master
+site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","LONGITUDE","MIN_DEPTH_M","MAX_DEPTH_M")])
+View(site.swS)
+
 #Save site-level data
 write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights_AllYears.csv",row.names = F)
 
@@ -186,9 +218,14 @@ head(st.list_w4);st.list_w4<-droplevels(st.list_w4) #generate the list
 data.gen_temp<-site.swS[site.swS$STRATANAME %in% c(st.list_w4$STRATANAME),] #Subset juv data to only include strata of interest 
 isl.drop<-c("Maui","Niihau","Kure","French Frigate","Midway","Pearl & Hermes","Lisianski") #excluding all NWHI islands- poor sampling across years
 data.temporal<-data.gen_temp[!data.gen_temp$ISLAND %in% c(isl.drop),] #Remove islands that don't have enough strata sampled across the years 
-nrow(data.temporal)
+length(unique(data.temporal$SITE))
+
+#We have 1010 sites for the temporal analysis- note,only strata that were surveyed in years were include, BUT not all possible strata for a given sector are included. E.g.
+#we may be missing the shallow stratum because it was only sampled in one year. Care should be taken when comparing temporal patterns between islands
 
 write.csv(data.temporal,file="T:/Benthic/Projects/Juvenile Project/JuvDen_Temporal.csv",row.names = FALSE)
+
+
 
 # TEMPORAL Patterns in Juveniles- Analysis and Plots --------------------------------------------
 
@@ -239,7 +276,7 @@ summary(glht(sam, mcp(OBS_YEAR="Tukey")))
 
 
 #Calculate adjusted pvalues for multiple test corrections
-pvals<-c(0.54507,0.01606,0.00311,0.366,0.312,0.000001,0.176,0.000039,0.305)
+pvals<-c(0.54508,0.01609,0.00325,0.366,0.312,0.000001,0.176,0.000041,0.305)
 round(p.adjust(pvals, "BH"), 3) #0.568 0.082 0.010 0.447 0.447 0.000 0.447 0.001 0.568
 
 
@@ -285,14 +322,6 @@ ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Fig
 
 
 # Spatial Trends in Juveniles averaged across years --------------------------------------------
-#Remove 2014 NWHI data because we do not have benthic cover data for this year which is needed for the correlative anlaysis
-REGION_YEAR<-c("NWHI_2014")
-
-table(site.swS$REGION,site.swS$OBS_YEAR)
-site.swS$REGION_YEAR<-paste(site.swS$REGION,site.swS$OBS_YEAR,sep="_")
-site.swS<-site.swS[site.swS$REGION_YEAR != REGION_YEAR,] #remove NWHI 2014 data
-table(site.swS$REGION,site.swS$OBS_YEAR)
-
 
 table(site.swS$ISLAND,site.swS$DB_RZ)
 nrow(site.swS) #total number of sites used in the spatial analysis
@@ -314,7 +343,6 @@ summary(modR)
 tuk2<-glht(modR, mcp(REGION="Tukey")) 
 tuk.cld2 <- cld(tuk2)
 sig<-c("bd","b","a","ab","c","d","a","c")
-#sig<-c("a","a","c","ac","b","d","c","b")
 
 spatial_Rmean<-cbind(spatial_Rmean,sig)
 
@@ -393,6 +421,7 @@ ggsave(plot=p10,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Fi
 
 #https://rpubs.com/valentin/pacific-centered-map-voronoi-tessellation
 
+
 #Identify median lat and long that surveys were conducted for each island and year
 lat.sum<-ddply(site.swS,.(REGION,ISLAND),
                summarize,
@@ -444,6 +473,9 @@ delta_shift <- juv_coords_sp %>%
 #Create an Inset map using a similar process described above
 box_cut2 <- bbox2SP(n = 90, s = -90, w = -120, e = 110, proj4string = world@proj4string)
 world_crop2 <- gDifference(world, box_cut2)
+
+###https://github.com/r-spatial/sf/issues/1902
+#Having issues with the 
 
 pacific_crop2 <- world_crop2 %>% 
   st_as_sf() %>% # change from sp to sf object/class

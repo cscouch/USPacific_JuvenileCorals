@@ -6,18 +6,18 @@ rm(list=ls())
 #LOAD LIBRARY FUNCTION ...
 source("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/scripts/Functions_Juveniles.R")
 
-## LOAD raw data downloaded from NCEI:
+## LOAD raw data- downlaod data from NCEI:
 # https://www.fisheries.noaa.gov/inport/item/36165
 # https://www.fisheries.noaa.gov/inport/item/22790
 # https://www.fisheries.noaa.gov/inport/item/36164
 # https://www.fisheries.noaa.gov/inport/item/36166
 
 #The 4 files were combined then read in
-df<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/ALL_REA_JUVCORAL_RAW_2013-2020_JuvenileProject.csv")
+load("T:/Benthic/Data/REA Coral Demography & Cover/Raw from Oracle/ALL_REA_JUVCORAL_RAW_2013-2020.rdata") 
 
 x<-df
 
-#I was having issues with NA values in the 2017 NWHI data- had to remerge data. Delete this commented text before going public
+#I was having issues with NA values in the 2017 NWHI data- had to re-merge data. Delete this commented text before going public
 #load("T:/Benthic/Data/REA Coral Demography & Cover/Raw from Oracle/ALL_REA_JUVCORAL_RAW_2013-2020.rdata") 
 # x<-df #leave this as df
 # 
@@ -70,6 +70,11 @@ x<-df
 x$SITE<- as.factor(x$SITE)
 x$SITE<-SiteNumLeadingZeros(x$SITE) 
 
+
+#Convert date formats
+class(x$DATE_)
+x$DATE_ <- as.Date(x$DATE_, format = "%Y-%m-%d")
+
 ### Use these functions to look at data
 head(x)
 tail(x)
@@ -82,10 +87,14 @@ sapply(x,class)##Change column names to make code easier to code
 
 colnames(x)[colnames(x)=="TRANSECTNUM"]<-"TRANSECT" #Change column name
 
+#remove Depth and coordinates columns from juvenile dataset- some of them values are missing. Use depths and coords from the SURVEY MASTER file
+x<-subset(x,select=-c(MAXDEPTH,MINDEPTH,LATITUDE,LONGITUDE))
+
 # Merge Juvenile data and SITE MASTER -------------------------------------
 #The survey master file is a full list of all of the sites with 
 # load site master to merge with colony data
-survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv")
+#survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv") #THIS FILE IS OUT DATED- UPDATE BEFORE PUBLISHING
+survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/SURVEY MASTER.csv")
 
 #Use SM coordinates-some coordinates are wrong in data and need to be updated
 colnames(survey_master)[colnames(survey_master)=="LATITUDE_LOV"]<-"LATITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
@@ -98,7 +107,7 @@ SIOYerrors<-unique(c(OYerror,SIerror))
 if(length(SIOYerrors)>0){print(paste0("Warning: Raw Data disagree with Survey Master for sitevisitids: ",x$SITEVISITID[SIOYerrors]))}
 
 #merge colony data and survey master
-x<-left_join(x, survey_master[,c("OBS_YEAR","SITEVISITID","SITE","LATITUDE","LONGITUDE","SEC_NAME","ANALYSIS_YEAR","new_MIN_DEPTH_M","new_MAX_DEPTH_M")])
+x<-left_join(x, survey_master[,c("OBS_YEAR","SITEVISITID","SITE","LATITUDE","LONGITUDE","SEC_NAME","new_MIN_DEPTH_M","new_MAX_DEPTH_M")])
 
 colnames(x)[colnames(x)=="new_MIN_DEPTH_M"]<-"MIN_DEPTH_M" #Change column name
 colnames(x)[colnames(x)=="new_MAX_DEPTH_M"]<-"MAX_DEPTH_M" #Change column name
@@ -109,17 +118,18 @@ test<-droplevels(test);table(test$SITE,test$MISSIONID) #create a table of missin
 if(dim(test)[1]>0) {cat("sites with MISSING SECTORS present")}   # should be 0
 #These are sites from a special mission that will be deleted
 
+
 # CLEAN UP ----------------------------------------------------------------
 
-##Remove sites that were only surveyed for photoquads but not demographics
-#Note-photoquad only sites are not included in data prior to 2018
+##Remove sites that were only surveyed for benthic cover but juveniles
+#Note-benthic cover only sites are not included in data prior to 2018
 #Test whether there are missing values in the NO_SURVEY_YN column. The value should be 0 or -1
 x.na<-x[is.na(x$NO_SURVEY_YN)&x$OBS_YEAR>2013,]
-View(x.na)
+head(x.na)
 
 x$NO_SURVEY_YN<-is.na(x$NO_SURVEY_YN)<-0 #Change NAs (blank cells) to 0
 x<-subset(x,NO_SURVEY_YN==0)
-x<-subset(x,SEGLENGTH!="NA") #Remove segments that were not surveyed for coral demography
+x<-subset(x,SEGLENGTH!="NA") #Remove segments that were not surveyed for juveniles
 
 ##Clean-up taxa information
 #AAAA denotes segments where no colonies were observed
