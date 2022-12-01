@@ -129,7 +129,7 @@ new.NH<-ddply(tmp,.(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN),
 nrow(site.data.gen2) #double check that the same number of rows are present before and after joining
 site.data.gen2<-left_join(site.data.gen2,new.NH)
 site.data.gen2<-subset(site.data.gen2,select=-c(NH)) #remove old NH column
-site.data.gen2<-site.data.gen2 %>% rename(NH=new.NH) #rename NH
+site.data.gen2<-site.data.gen2 %>% dplyr::rename(NH=new.NH) #rename NH
 nrow(site.data.gen2)#double check that the same number of rows are present before and after joining
 
 table(site.data.gen2$ISLAND,site.data.gen2$OBS_YEAR)
@@ -525,15 +525,15 @@ deltamap<-ggplot() +
 #Combine main and inset maps
 finalmap = ggdraw() +
   draw_plot(deltamap) +
-  #draw_plot(spatialR, x = 0.05, y = 0.14, width = 0.45, height = 0.45)+
+  draw_plot(spatialR, x = 0.05, y = 0.14, width = 0.3, height = 0.3)+
   #draw_plot(insetmap, x = 0.02, y = 0.07, width = 0.3, height = 0.3)
-  draw_plot(insetmap, x = 0.77, y = 0.1, width = 0.23, height = 0.23)
+  draw_plot(insetmap, x = 0.77, y = 0.2, width = 0.23, height = 0.23)
   
 finalmap
 
-ggsave(plot=finalmap,file="T:/Benthic/Projects/Juvenile Project/Figures/RecentJuvMap_colorsJuvCol2.jpg",width=13,height=9)
+ggsave(plot=finalmap,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/new.Figure1.jpg",width=13,height=9)
 
-
+#OLD version
 #plot main data map with island colors = REGION
 delta_shift$REGION <- factor(delta_shift$REGION, levels = c("NWHI","MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
 delta_shift<- delta_shift[order(delta_shift$REGION),];delta_shift
@@ -567,5 +567,5 @@ finalmap = ggdraw() +
 
 finalmap
 
-ggsave(plot=finalmap,file="T:/Benthic/Projects/Juvenile Project/Figures/Final for Manuscript/Figure 1.jpg",width=13,height=9)
+ggsave(plot=finalmap,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Figure 1.jpg",width=13,height=9)
 
