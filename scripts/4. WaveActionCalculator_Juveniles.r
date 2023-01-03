@@ -137,7 +137,7 @@ abline(h=750) # this seems like a reasonable break
 abline(h=500)
 
 #Define a distance that is too far to estimate
-TooFar=1000
+TooFar=4000
 
 #Remove sites with wave data >1000m away
 sites_waves$values[which(sites_waves$Dist>TooFar)]=NA
