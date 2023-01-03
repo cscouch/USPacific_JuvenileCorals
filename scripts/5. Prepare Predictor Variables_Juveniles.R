@@ -15,7 +15,6 @@ source("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/scri
 source("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/lib/fish_team_functions.R")
 source("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/lib/Islandwide Mean&Variance Functions.R")
 
-library(VCA)
 library(forcats)
 library(geosphere)
 library(rgdal)
@@ -35,10 +34,9 @@ wave<-read.csv("T:/Benthic/Projects/Juvenile Project/Pacific_WaveActionData_v5.c
 githubURL <- "https://github.com/cscouch/USPacific_JuvenileCorals/blob/main/Data/Survey_Master_Timeseries_2022-04-04.Rdata?raw=true"
 load(url(githubURL))
 
-cover1<-read.csv("T:/Benthic/Data/REA Coral Demography & Cover/Summary Data/Site/BenthicCover_2010-2020_Tier1_SITE.csv")#Cover from all sites
-cover3<-read.csv("T:/Benthic/Data/REA Coral Demography & Cover/Summary Data/Site/BenthicCover_2010-2020_Tier3_SITE.csv")#Cover from all sites
+cover1<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier1_SITE.csv")#Cover from all sites
+cover3<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier3_SITE.csv")#Cover from all sites
 sectors<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/Sectors-Strata-Areas.csv", stringsAsFactors=FALSE)
-#human<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/JuvCoralSitse_w_pop_den.csv", stringsAsFactors=FALSE)
 
 
 #Change Region Names to correspond to juvenile data
@@ -221,7 +219,7 @@ all_pred_site %>%
   filter(n()>1)
 
 
-write.csv(all_pred_site, file="T:/Benthic/Projects/Juvenile Project/JuvDen_Pred_SITE_AllYears.csv",row.names = F)
+write.csv(all_pred_site, file="T:/Benthic/Projects/Juvenile Project/Data/JuvDen_Pred_SITE_AllYears.csv",row.names = F)
 
 
 
