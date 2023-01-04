@@ -155,6 +155,11 @@ cover$SEC_NAME<-ifelse(cover$SEC_NAME %in% c("TAU_OPEN","TAU_SANCTUARY"),"TAU",a
 cover$SEC_NAME<-ifelse(cover$SEC_NAME %in% c("SWA_OPEN","SWA_SANCTUARY"),"SWA",as.character(cover$SEC_NAME))
 View(cover)
 
+#Convert Protected Reef Slope to Forereef and Subset just Forereef sites
+cover$REEF_ZONE<-ifelse(cover$REEF_ZONE=="Protected_Slope","Forereef",as.character(cover$REEF_ZONE))
+cover<-subset(cover,REEF_ZONE=="Forereef") #only include forereef
+
+
 cover$STRATANAME<-paste(cover$SEC_NAME,cover$REEF_ZONE,cover$DEPTH_BIN,sep="_") #Create stratum
 
 #Calculate strata mean cover for each stratum
@@ -218,6 +223,10 @@ all_pred_site %>%
   group_by(SITE) %>% 
   filter(n()>1)
 
+#Last Clean-up
+all_pred_site[all_pred_site==-9991] <- NA #change -9991 in environemtnal data to NA
+
+all_pred_site<-dplyr::filter(all_pred_site,SITE !="LAY-05016")
 
 write.csv(all_pred_site, file="T:/Benthic/Projects/Juvenile Project/Data/JuvDen_Pred_SITE_AllYears.csv",row.names = F)
 
@@ -229,7 +238,7 @@ write.csv(all_pred_site, file="T:/Benthic/Projects/Juvenile Project/Data/JuvDen_
 #We are missing some cover data from some benthic sites so use all benthic and fish sites
 #Merge together wsd and sectors
 
-sectors<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/Sectors-Strata-Areas.csv", stringsAsFactors=FALSE)
+sectors<-read.csv("C:/Users/courtney.s.couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SectorArea_Juveniles.csv", stringsAsFactors=FALSE)
 
 strataKEEP<-unique(all_pred_site$STRATANAME)
 cover<-dplyr::filter(cover,STRATANAME %in% strataKEEP)
@@ -312,214 +321,6 @@ head(dpsec)
 colnames(dpsec)[c(5:11)]<-paste(colnames(dpsec)[c(5:11)],"sec",sep="_")
 
 write.csv(dpsec, file="T:/Benthic/Projects/Juvenile Project/BenthicCover_JuvenileProject_Tier1_SECTOR.csv",row.names = F)
-
-
-
-# #Generate a list of Regions and years to include in final summary
-REGION<-c("NWHI","MHI","PHOENIX","LINE","SMI","NMI","SAMOA","WAKE")
-ANALYSIS_YEAR<-c("2016","2019","2018","2018","2017","2017","2018","2017")
-keep<-as.data.frame(cbind(REGION,ANALYSIS_YEAR))
-
-keep$r_y<-paste(keep$REGION,keep$ANALYSIS_YEAR,sep = "_")
-
-#ONly include years where sites were most recently surveyed for each region
-cover_sum$r_y<-paste(cover_sum$REGION,cover_sum$ANALYSIS_YEAR,sep = "_")
-cover_sum<-cover_sum[cover_sum$r_y %in% c(keep$r_y),]
-
-
-#CONVERT TO WIDE THEN CALCULATE DELTA CHANGE in cover
-#Calculate absolute % cover change between years
-CalcDeltaCover<-function(data,data.col,metric_name="DeltaCCA"){
-  data$D_COL<-data[,data.col]
-  #Convert long to wide
-  wide<-data %>%
-    dplyr::select(REGION,ISLAND,ANALYSIS_YEAR,SEC_NAME,STRATANAME,DEPTH_BIN,D_COL) %>%
-    pivot_wider(names_from = ANALYSIS_YEAR,values_from = D_COL)
-  
-  colnames(wide)[6:ncol(wide)] <- paste("t", colnames(wide[,c(6:ncol(wide))]), sep = "") #add "t" to year column
-  
-  wide$DeltaCover<-NULL
-  for (i in c(1:nrow(wide))){ #opening brace
-    if(wide$REGION[i] %in% c("SMI","NMI","WAKE")){ #c&p
-      wide$DeltaCover[i] = wide$t2017[i]-wide$t2014[i] #c&p
-    } #c&P
-    if(wide$REGION[i] %in% c("SAMOA","LINE","PHOENIX")){ #c&p
-      wide$DeltaCover[i] = wide$t2018[i]-wide$t2015[i] #c&p
-    } #c&P
-    if(wide$REGION[i] == "MHI"){ #c&p
-      wide$DeltaCover[i] = wide$t2019[i]-wide$t2016[i] #c&p
-    } #c&P
-    if(wide$REGION[i] == "NWHI"){ #c&p
-      wide$DeltaCover[i] = wide$t2016[i]-wide$t2014[i] #c&p
-    } #c&P
-  } #closing curly brace for entire forloop
-  colnames(wide)[which(colnames(wide) == 'DeltaCover')] <- metric_name #change group to whatever your grouping field is.
-  
-  wide<- dplyr::select(wide,-c(t2010:t2019))
-  return(wide)
-}
-#Calc Delta CCA and Coral cover
-CCA_sumW<-CalcDeltaCover(cover_sum3,"CCA","Delta_CCA");head(CCA_sumW)
-Coral_sumW<-CalcDeltaCover(cover_sum3,"CORAL","Delta_CORAL");head(Coral_sumW)
-Turf_sumW<-CalcDeltaCover(cover_sum3,"TURF","Delta_TURF");head(Turf_sumW)
-SandRub_sumW<-CalcDeltaCover(cover_sum3,"SAND_RUB","Delta_SAND_RUB");head(SandRub_sumW)
-
-delcover<- CCA_sumW   %>%    
-  left_join(Coral_sumW) %>%
-  left_join(Turf_sumW) %>%
-  left_join(SandRub_sumW)
-
-head(delcover)
-nrow(delcover)
-nrow(CCA_sumW)
-
-cover_sum2$ANALYSIS_YEAR<-as.factor(cover_sum2$ANALYSIS_YEAR)
-
-p<-ggplot(subset(cover_sum3,REGION=="SAMOA"),aes(x=ANALYSIS_YEAR,y=CCA,fill=DEPTH_BIN))+
-    geom_bar(stat='identity')+
-    facet_wrap(~SEC_NAME,scale='free_x')+
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90)
-      ,plot.background = element_blank()
-      ,panel.grid.major = element_blank()
-      ,panel.grid.minor = element_blank()
-      ,axis.ticks.x = element_blank() # no x axis ticks
-      ,axis.title.x = element_text( vjust = -.0001) # adjust x axis to lower the same amount as the genus labels
-      ,legend.position="bottom")
-p
-
-p<-ggplot(subset(cover_sum2,REGION=="MHI"),aes(x=ANALYSIS_YEAR,y=CCA,fill=DEPTH_BIN))+
-  geom_bar(stat='identity')+
-  facet_wrap(~SEC_NAME,scale='free_x')+
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 90)
-    ,plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,axis.ticks.x = element_blank() # no x axis ticks
-    ,axis.title.x = element_text( vjust = -.0001) # adjust x axis to lower the same amount as the genus labels
-    ,legend.position="bottom")
-p
-
-p<-ggplot(subset(cover_sum2,REGION=="LINE"),aes(x=ANALYSIS_YEAR,y=CCA,fill=DEPTH_BIN))+
-  geom_bar(stat='identity')+
-  facet_wrap(~SEC_NAME,scale='free_x')+
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 90)
-    ,plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,axis.ticks.x = element_blank() # no x axis ticks
-    ,axis.title.x = element_text( vjust = -.0001) # adjust x axis to lower the same amount as the genus labels
-    ,legend.position="bottom")
-p
-
-
-#Plot delta cover
-#convert wide to long
-library(stringr)
-delcoverN<-delcover %>% 
-  rename_all(~stringr::str_replace(.,"Delta_",""))
-
-delcoverL<-pivot_longer(delcoverN,
-                        cols = CCA:SAND_RUB,
-                        names_to = "Category",
-                        values_to = "DeltaCover")
-
-#Calculate Island-level means- These are unweighted and therefore incorrect- just for curiosity sake
-# delcover_sum<-delcoverL %>%
-#   group_by(REGION,ISLAND,Category) %>%
-#   summarize(MeanDelta=mean(DeltaCover),na.rm=T),SEDelta=mean(MAX_DEPTH_M,na.rm=T))
-
-p<-ggplot(delcoverL,aes(x=Category,y=DeltaCover,fill=Category))+
-  geom_boxplot()+
-  geom_hline(yintercept=1)+
-  facet_wrap(~REGION)+
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 90)
-    ,plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,axis.ticks.x = element_blank() # no x axis ticks
-    ,axis.title.x = element_text( vjust = -.0001) # adjust x axis to lower the same amount as the genus labels
-    ,legend.position="bottom")
-p
-
-
-
-# Combine all summaries into 1 dataframe ----------------------------------
-all_pred<- d_strat   %>%    
-      left_join(cover_sum) %>%
-      left_join(delcover) %>%
-      left_join(depth_sum) %>%
-      left_join(hab_sum_w) %>%
-      left_join(lat_sum) %>%
-      left_join(eds_sum) %>%
-      left_join(sh_sum) %>%
-      left_join(humans_sum) %>%
-      left_join(wave_sum)%>%
-      left_join(ts_sum)
-
-head(all_pred)
-View(all_pred)
-
-write.csv(all_pred, file="T:/Benthic/Projects/Juvenile Project/JuvDeltaDen_Pred.csv",row.names = F)
-
-
-# #Change specific sector names to match the sector shape file polygons
-# dpst$SEC_NAME[dpst$SEC_NAME == "HAW_HAMAKUA"] <- "HAW_HAMAK"
-# dpst$SEC_NAME[dpst$SEC_NAME == "GUA_PATI_POINT"] <- "GUA_PATI_PT"
-# 
-# #Separate strata to create sector maps in Arc
-# sh<-subset(dpst,DEPTH_BIN=="Shallow")
-# m<-subset(dpst,DEPTH_BIN=="Mid")
-# d<-subset(dpst,DEPTH_BIN=="Deep")
-# 
-# write.csv(sh, file="C:/Users/Courtney.S.Couch/Documents/Courtney's Files/R Files/ESD/Juvenile Project/Predictor Variables/JuvProject_SubstrateHeight_Shallow.csv",row.names = F)
-# write.csv(m, file="C:/Users/Courtney.S.Couch/Documents/Courtney's Files/R Files/ESD/Juvenile Project/Predictor Variables/JuvProject_SubstrateHeight_Mid.csv",row.names = F)
-# write.csv(d, file="C:/Users/Courtney.S.Couch/Documents/Courtney's Files/R Files/ESD/Juvenile Project/Predictor Variables/JuvProject_SubstrateHeight_Deep.csv",row.names = F)
-# 
-
-#Plot mean values for predictors by sector and/or stratum to make sure values make sense
-
-all_pred<-subset(all_pred,select=-c(SEC_NAME,ANALYSIS_YEAR,years,DeltaDen))
-all_pred_l<- all_pred %>% pivot_longer(
-  cols = DeltaDen_mo:MeanWavePower,
-  names_to = "METRIC",
-  values_to = "Value")
-
-
-Plot_Preds<-function(data,metric_name="MeanWavePower"){
-  data$METRIC=data[,metric_name]
-  # data$METRIC<-data$metric_name
-  p<-ggplot(data,aes(x=SEC_NAME,y=METRIC,fill=DEPTH_BIN))+
-    geom_bar(position="stack", stat="identity")+
-    facet_wrap(~REGION,scale='free_x')+
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90)
-      ,plot.background = element_blank()
-      ,panel.grid.major = element_blank()
-      ,panel.grid.minor = element_blank()
-      ,axis.ticks.x = element_blank() # no x axis ticks
-      ,axis.title.x = element_text( vjust = -.0001) # adjust x axis to lower the same amount as the genus labels
-      ,legend.position="bottom")
- return(p) 
-}
-
-
-WavePlot<-Plot_Preds(all_pred,"MeanWavePower");WavePlot
-CORALPlot<-Plot_Preds(all_pred,"CORAL");CORALPlot
-CCAPlot<-Plot_Preds(all_pred,"CCA");CCAPlot
-BasaltPlot<-Plot_Preds(all_pred,"Basalt_HC");BasaltPlot
-MeanMaxDHWPlot<-Plot_Preds(all_pred,"MeanMaxDHW10");MeanMaxDHWPlot
-WavePlot<-Plot_Preds(all_pred,"MeanWavePower");WavePlot
-
-
 
 
 
