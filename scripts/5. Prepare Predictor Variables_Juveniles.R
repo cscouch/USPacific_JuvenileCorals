@@ -31,8 +31,19 @@ jwd_site<-read.csv("T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights
 tsdhw<-read.csv("T:/Benthic/Projects/Juvenile Project/Juvenile_TimeSinceDHW4_8_v2.csv"); tsdhw<-subset(tsdhw,select= -c(X,ISLAND))
 wave<-read.csv("T:/Benthic/Projects/Juvenile Project/Pacific_WaveActionData_v5.csv")
 
-githubURL <- "https://github.com/cscouch/USPacific_JuvenileCorals/blob/main/Data/Survey_Master_Timeseries_2022-04-04.Rdata?raw=true"
-load(url(githubURL))
+
+#githubURL <- "https://github.com/cscouch/USPacific_JuvenileCorals/blob/main/Data/Survey_Master_Timeseries_2022-04-04.Rdata?raw=true"
+# githubURL <- "https://github.com/krtanaka/env_data_summary/blob/main/outputs/EDS_Timeseries_2022-12-08.Rdata?raw=true"
+# load(url(githubURL))
+
+
+load("C:/Users/courtney.s.couch/Documents/GitHub/env_data_summary/outputs/EDS_Timeseries_2022-12-08.Rdata")
+
+#reformat SM to merge with coral data. 
+SM <- df %>% select("site_visit_id","mean_Chlorophyll_A_ESA_OC_CCI_8Day_DY01": "mean_weekly_range_SST_CRW_CoralTemp_Daily_ALLB4")
+colnames(SM)[colnames(SM)=="site_visit_id"]<-"SITEVISITID" #Change column name
+
+
 
 cover1<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier1_SITE.csv")#Cover from all sites
 cover3<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier3_SITE.csv")#Cover from all sites
@@ -54,12 +65,10 @@ Convert_Region<-function(data){
   return(data$REGION)
 }
 
-SM$REGION<-Convert_Region(SM)
 cover1$REGION<-Convert_Region(cover1)
 cover3$REGION<-Convert_Region(cover3)
 sectors$REGION<-Convert_Region(sectors)
 jwd_site$REGION<-Convert_Region(jwd_site)
-SM$STRATANAME<-paste(SM$SEC_NAME,SM$REEF_ZONE,SM$DEPTH_BIN,sep="_")
 
 
 #Remove spaces in island and sec names
@@ -82,10 +91,6 @@ sectors<-mutate_if(sectors,
                   is.character, 
                   str_replace_all, pattern = " ", replacement = "_")
 
-SM<-mutate_if(SM, 
-                is.character, 
-              str_replace_all, pattern = " ", replacement = "_")
-
 
 #View(jwd_site)
 nrow(jwd_site) #Should be 1405
@@ -106,23 +111,14 @@ jwd_site<-jwd_site %>%
 
 #Subset survey master and env columns of interest -not prior to 10/14/22, I was using the 750m VIIRS Chla data, but the data only goes back to 2012. Swaping in 4km data
 
-cols<-c("MISSIONID","DATE_","SITEVISITID", "OBS_YEAR", "REGION", "ISLAND","SEC_NAME", "SITE","REEF_ZONE",
-               "DEPTH_BIN","STRATANAME", "DHW.MeanMax_Degree_Heating_Weeks_YR01","DHW.MeanMax_Degree_Heating_Weeks_YR03",
-        "DHW.MeanMax_Degree_Heating_Weeks_YR05","DHW.MeanMax_Degree_Heating_Weeks_YR10","DHW.MeanMax_Degree_Heating_Weeks_YR10YR01",
-        "DHW.MaxMax_Degree_Heating_Weeks_YR03","DHW.MaxMax_Degree_Heating_Weeks_YR05","DHW.MaxMax_Degree_Heating_Weeks_YR10","DHW.Np10y_Major_Degree_Heating_Weeks_YR10",
-        "mean_SST_CRW_Daily_YR10","sd_SST_CRW_Daily_YR10","mean_weekly_range_SST_CRW_Daily_YR10","mean_biweekly_range_SST_CRW_Daily_YR10","mean_Chlorophyll_A_ESAOCCCI_8Day_YR10","sd_Chlorophyll_A_ESAOCCCI_8Day_YR10",
-        "mean_annual_range_Chlorophyll_A_ESAOCCCI_8Day_YR10")
+cols<-c("SITEVISITID", "DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR01","DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR03",
+        "DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR05","DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10","DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10YR01",
+        "DHW.MaxMax_Degree_Heating_Weeks_CRW_Daily_YR03","DHW.MaxMax_Degree_Heating_Weeks_CRW_Daily_YR05","DHW.MaxMax_Degree_Heating_Weeks_CRW_Daily_YR10","DHW.Np10y_Major_Degree_Heating_Weeks_CRW_Daily_YR10",
+        "mean_SST_CRW_CoralTemp_Daily_YR10","sd_SST_CRW_CoralTemp_Daily_YR10","mean_weekly_range_SST_CRW_CoralTemp_Daily_YR10","mean_biweekly_range_SST_CRW_CoralTemp_Daily_YR10","mean_Chlorophyll_A_ESA_OC_CCI_8Day_YR10","sd_Chlorophyll_A_ESA_OC_CCI_8Day_YR10",
+        "mean_annual_range_Chlorophyll_A_ESA_OC_CCI_8Day_YR10")
 sm_env<-SM[,cols]
 
 
-#Not enough sampling in each sector- pool them together
-sm_env$SEC_NAME<-ifelse(sm_env$SEC_NAME %in% c("TAU_OPEN","TAU_SANCTUARY"),"TAU",as.character(sm_env$SEC_NAME))
-sm_env$SEC_NAME<-ifelse(sm_env$SEC_NAME %in% c("SWA_OPEN","SWA_SANCTUARY"),"SWA",as.character(sm_env$SEC_NAME))
-View(sm_env)
-
-#Calculate CVchla and CVsst
-# sm_env$CVsst<-sm_env$sd_SST_CRW_Daily_YR10/sm_env$mean_SST_CRW_Daily_YR10
-# sm_env$CVchla<-sm_env$sd_Chlorophyll_A_ESAOCCCI_8Day_YR05/sm_env$mean_Chlorophyll_A_ESAOCCCI_8Day_YR05
 
 # #Change NaN to NA
 is.nan.data.frame <- function(x)
@@ -179,11 +175,6 @@ tsdhw<-tsdhw %>% filter(!is.na(YearSinceDHW4))
 # Combine juvenile and predictor data at site-level -----------------------
 
 cover_forsite<-cover %>% select(SITE,CORAL,CCA,SAND_RUB,TURF,EMA_MA)
-sm_env<-sm_env %>% select(SITEVISITID, SITE,DHW.MeanMax_Degree_Heating_Weeks_YR01,DHW.MeanMax_Degree_Heating_Weeks_YR03,
-                          DHW.MeanMax_Degree_Heating_Weeks_YR05,DHW.MeanMax_Degree_Heating_Weeks_YR10,DHW.MeanMax_Degree_Heating_Weeks_YR10YR01,
-                          DHW.MaxMax_Degree_Heating_Weeks_YR03,DHW.MaxMax_Degree_Heating_Weeks_YR05,DHW.MaxMax_Degree_Heating_Weeks_YR10,DHW.Np10y_Major_Degree_Heating_Weeks_YR10,
-                          mean_SST_CRW_Daily_YR10,sd_SST_CRW_Daily_YR10,mean_weekly_range_SST_CRW_Daily_YR10,mean_biweekly_range_SST_CRW_Daily_YR10,mean_Chlorophyll_A_ESAOCCCI_8Day_YR10,sd_Chlorophyll_A_ESAOCCCI_8Day_YR10,
-                          mean_annual_range_Chlorophyll_A_ESAOCCCI_8Day_YR10)
 wave<-wave %>% select(SITE,WavePower)
 
 all_pred_site<- jwd_site   %>% 
@@ -209,10 +200,10 @@ all_pred_site$EMA_MA<-ifelse(is.na(all_pred_site$EMA_MA),all_pred_site$EMA_MAst,
 
 
 #Missing depths- went back to datasheets or use max depth
-# all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="TIN-00646",21.3,all_pred_site$Depth_Median)
-# all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="TIN-00581",13.7,all_pred_site$Depth_Median)
-# all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="WAK-00430",9.44,all_pred_site$Depth_Median)
-# all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="TUT-01987",22.1,all_pred_site$Depth_Median)
+all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="TIN-00646",21.3,all_pred_site$Depth_Median)
+all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="TIN-00581",13.7,all_pred_site$Depth_Median)
+all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="WAK-00430",9.44,all_pred_site$Depth_Median)
+all_pred_site$Depth_Median<-ifelse(all_pred_site$SITE=="TUT-01987",22.1,all_pred_site$Depth_Median)
 all_pred_site$Depth_Median<-ifelse(is.na(all_pred_site$Depth_Median),all_pred_site$MAX_DEPTH_M,all_pred_site$Depth_Median)#missing min depth from several 2013 MHI sites
 
 
@@ -225,8 +216,6 @@ all_pred_site %>%
 
 #Last Clean-up
 all_pred_site[all_pred_site==-9991] <- NA #change -9991 in environemtnal data to NA
-
-all_pred_site<-dplyr::filter(all_pred_site,SITE !="LAY-05016")
 
 write.csv(all_pred_site, file="T:/Benthic/Projects/Juvenile Project/Data/JuvDen_Pred_SITE_AllYears.csv",row.names = F)
 
