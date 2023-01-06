@@ -184,7 +184,7 @@ site.swS %>%
 #We have 1405 sites for spatial and correlative analysis
 
 #Merge Lat and Long and depths back in
-survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/SURVEY MASTER.csv")
+survey_master<-read.csv("C:/Users/courtney.s.couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv")
 
 #Use SM coordinates-some coordinates are wrong in data and need to be updated
 colnames(survey_master)[colnames(survey_master)=="LATITUDE_LOV"]<-"LATITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
@@ -198,7 +198,7 @@ site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","
 View(site.swS)
 
 #Save site-level data
-write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights_AllYears.csv",row.names = F)
+write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv",row.names = F)
 
 
 # GENERATE DATA FOR TEMPORAL ANALYSIS ---------------------------------------------------

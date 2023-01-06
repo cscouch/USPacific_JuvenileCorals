@@ -36,6 +36,8 @@ library(tibble)
 library(car)
 library(extrafont)
 library(remotes)
+library(corrplot)
+
 # remotes::install_version("Rttf2pt1", version = "1.3.8")
 # extrafont::font_import()
 #loadfonts(device="win")
@@ -49,14 +51,13 @@ df<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/JuvDen_Pred_SITE_AllYear
 jcdG_st<-read.csv("T:/Benthic/Projects/Juvenile Project/JuvProject_STRATA_WITHOUT_MHI2013.csv")
 cover_sec<-read.csv("T:/Benthic/Projects/Juvenile Project/BenthicCover_JuvenileProject_Tier1_SECTOR.csv")
 
+
 #remove columns
 df<-subset(df,select=c(DATE_,OBS_YEAR,REGION,ISLAND,SEC_NAME,DEPTH_BIN,REEF_ZONE,STRATANAME,HABITAT_CODE,SITE,n,NH,sw,TRANSECTAREA_j,JuvColCount,JuvColDen,
-                       LATITUDE,LONGITUDE,Depth_Median,CORAL,CORALst,CCA,SAND_RUB,TURF,EMA_MA, YearSinceDHW4,DHW.MeanMax_Degree_Heating_Weeks_YR01,
-                       DHW.MeanMax_Degree_Heating_Weeks_YR03,DHW.MeanMax_Degree_Heating_Weeks_YR05,DHW.MeanMax_Degree_Heating_Weeks_YR10YR01,
-                       DHW.MeanMax_Degree_Heating_Weeks_YR10,DHW.MaxMax_Degree_Heating_Weeks_YR10,
-                       DHW.Np10y_Major_Degree_Heating_Weeks_YR10,WavePower,mean_SST_CRW_Daily_YR10,
-                       sd_SST_CRW_Daily_YR10,mean_biweekly_range_SST_CRW_Daily_YR10,HumanDen,mean_Chlorophyll_A_ESAOCCCI_8Day_YR10,sd_Chlorophyll_A_ESAOCCCI_8Day_YR10,
-                       mean_annual_range_Chlorophyll_A_ESAOCCCI_8Day_YR10))
+                       LATITUDE,LONGITUDE,Depth_Median,CORAL,CORALst,CCA,SAND_RUB,TURF,EMA_MA, YearSinceDHW4,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR01,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR03,
+                       DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR05,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10YR01,
+                       DHW.Np10y_Major_Degree_Heating_Weeks_CRW_Daily_YR10,mean_SST_CRW_CoralTemp_Daily_YR10,sd_SST_CRW_CoralTemp_Daily_YR10,mean_weekly_range_SST_CRW_CoralTemp_Daily_YR10,mean_biweekly_range_SST_CRW_CoralTemp_Daily_YR10,mean_Chlorophyll_A_ESA_OC_CCI_8Day_YR10,sd_Chlorophyll_A_ESA_OC_CCI_8Day_YR10,
+                       mean_annual_range_Chlorophyll_A_ESA_OC_CCI_8Day_YR10, WavePower,HumanDen))
 
 #Combine site level data with sector cover data
 cover_sec$OBS_YEAR<-cover_sec$ANALYSIS_YEAR
@@ -160,27 +161,28 @@ df$LATITUDE<-abs(df$LATITUDE)
 
 
 #Rename Predictors
-colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_YR01"]<-"MaxDHW1"
-colnames(df)[colnames(df)=="DHW.MaxMax_Degree_Heating_Weeks_YR03"]<-"MaxDHW3"
-colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_YR03"]<-"MeanDHW3"
-colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_YR05"]<-"MeanDHW5"
-colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_YR10YR01"]<-"MeanDHW9"
-colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_YR10"]<-"MeanDHW10"
-colnames(df)[colnames(df)=="DHW.MaxMax_Degree_Heating_Weeks_YR10"]<-"MaxDHW10"
-colnames(df)[colnames(df)=="mean_SST_CRW_Daily_YR10"]<-"MeanSST"
-colnames(df)[colnames(df)=="sd_Chlorophyll_A_ESAOCCCI_8Day_YR10"]<-"SDchla"
-colnames(df)[colnames(df)=="sd_SST_CRW_Daily_YR10"]<-"SDsst"
-colnames(df)[colnames(df)=="mean_Chlorophyll_A_ESAOCCCI_8Day_YR10"]<-"Meanchla"
-colnames(df)[colnames(df)=="DHW.Np10y_Major_Degree_Heating_Weeks_YR10"]<-"DHW_Freq"
-colnames(df)[colnames(df)=="mean_biweekly_range_SST_CRW_Daily_YR10"]<-"SST_Range"
+colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR01"]<-"MeanDHW1"
+colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR03"]<-"MeanDHW3"
+colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR05"]<-"MeanDHW5"
+colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10YR01"]<-"MeanDHW9"
+colnames(df)[colnames(df)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10"]<-"MeanDHW10"
+colnames(df)[colnames(df)=="mean_SST_CRW_CoralTemp_Daily_YR10"]<-"MeanSST"
+colnames(df)[colnames(df)=="sd_Chlorophyll_A_ESA_OC_CCI_8Day_YR10"]<-"SDchla"
+colnames(df)[colnames(df)=="sd_SST_CRW_CoralTemp_Daily_YR10"]<-"SDsst"
+colnames(df)[colnames(df)=="mean_Chlorophyll_A_ESA_OC_CCI_8Day_YR10"]<-"Meanchla"
+colnames(df)[colnames(df)=="DHW.Np10y_Major_Degree_Heating_Weeks_CRW_Daily_YR10"]<-"DHW_Freq"
+colnames(df)[colnames(df)=="mean_biweekly_range_SST_CRW_CoralTemp_Daily_YR10"]<-"SST_Range"
 
 hist(log10(df$HumanDen+0.5))
 df$logHumanDen<-log10(df$HumanDen+0.5)
 
 
+
+
 #Extract predictors and merge with new survey weights dataset
-pcols<-c("SITE","CORAL","CoralSec_A","CORALst","CCA","TURF","EMA_MA","SAND_RUB","Depth_Median","LATITUDE","MaxDHW1",
-         "MeanDHW3","MeanDHW5","MeanDHW9","MeanDHW10","MaxDHW10","DHW_Freq","Meanchla","SST_Range","SDsst","SDchla","MeanSST","WavePower","YearSinceDHW4","logHumanDen")
+pcols<-c("SITE","CORAL","CoralSec_A","CORALst","CCA","TURF","EMA_MA","SAND_RUB","Depth_Median","LATITUDE",
+         "MeanDHW3","MeanDHW5","MeanDHW9","MeanDHW10","DHW_Freq","Meanchla","SST_Range","SDsst","SDchla",
+         "MeanSST","WavePower","YearSinceDHW4","logHumanDen")
 
 p<-df[,pcols]
 
@@ -200,15 +202,6 @@ preds<-r[,9:ncol(r)]
 # library(GGally)
 # ggpairs(preds)
 
-#Remove rows with NA values in Chla- most of the 2019 MHI data
-preds<-preds %>%
-  filter(!is.na(Meanchla))
-
-df<-df %>%
-  filter(!is.na(Meanchla))
-
-
-library(corrplot)
 
 par(mfrow=c(1,1))
 M = cor(preds)

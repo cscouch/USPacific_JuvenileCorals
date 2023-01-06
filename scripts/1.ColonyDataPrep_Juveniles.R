@@ -93,8 +93,7 @@ x<-subset(x,select=-c(MAXDEPTH,MINDEPTH,LATITUDE,LONGITUDE))
 # Merge Juvenile data and SITE MASTER -------------------------------------
 #The survey master file is a full list of all of the sites with 
 # load site master to merge with colony data
-#survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv") #THIS FILE IS OUT DATED- UPDATE BEFORE PUBLISHING
-survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/SURVEY MASTER.csv")
+survey_master<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv") #THIS FILE IS OUT DATED- UPDATE BEFORE PUBLISHING
 
 #Use SM coordinates-some coordinates are wrong in data and need to be updated
 colnames(survey_master)[colnames(survey_master)=="LATITUDE_LOV"]<-"LATITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
