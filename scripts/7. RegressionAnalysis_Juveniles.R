@@ -627,7 +627,7 @@ var_plot
 
 
 setwd("T:/Benthic/Projects/Juvenile Project/Manuscript/Figures")
-png(width = 750, height = 750, filename = "Figure 3.png")
+pdf(width = 12, height = 12, file = "Figure 3.pdf")
 var_plot
 dev.off()
 
