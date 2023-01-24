@@ -944,7 +944,8 @@ att <- attributes(scale(new.df$MeanDHW10))
 mylabels <- seq(0,14,2)
 mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
 
-colors<-c("cyan4","purple3","goldenrod2")
+#colors<-c("cyan4","purple3","goldenrod2")
+colors<-c("cyan4","purple3","gray67")
 
 #Reorder HSts variables
 all.newdata$HSts_cat <- factor(all.newdata$HSts_cat, levels = c("0-3 years","3-10 years","> 10 years"))
@@ -963,7 +964,7 @@ plot1<-ggplot() +
     legend.position = "bottom",
     legend.title=element_blank(),
     legend.key.size = unit(1.5, 'cm'),
-    legend.text = element_text(size=18),
+    legend.text = element_text(size=16),
     text = element_text(size = 18),
     panel.grid = element_blank()
   ) +
@@ -1038,7 +1039,7 @@ att <- attributes(scale(new.df$WavePower))
 mylabels <- seq(0,max(new.df$WavePower),75000)
 mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
 
-colors<-c("steelblue2","royalblue4")
+colors<-c("orange1","red3")
 
 #Reorder HSts variables
 all.newdata$HSsev_cat <- factor(all.newdata$HSsev_cat, levels = c("low","high"))
@@ -1055,14 +1056,14 @@ plot2<-ggplot() +
     legend.position = "bottom",
     legend.title=element_blank(),
     legend.key.size = unit(1.5, 'cm'),
-    legend.text = element_text(size=18),
+    legend.text = element_text(size=16),
     text = element_text(size = 18),
     panel.grid = element_blank()
   ) +
   ylab(expression(bold(paste("Predicted Juvenile Colonies",m^-2)))) +
   xlab(expression(bold(Wave~Power~(kWh~m^{-1}))))  +
-  scale_color_manual(labels=c(expression('< 4 '^o*'C-weeks'),expression(""> '4 '^o*'C-weeks')),values = colors)+
-  scale_fill_manual(labels=c(expression('< 4 '^o*'C-weeks'),expression(""> '4 '^o*'C-weeks')),values = colors)+
+  scale_color_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
+  scale_fill_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
   scale_x_continuous(labels = comma(mylabels),breaks=mybreaks)+
   scale_y_continuous(limits=c(0,20))+
   geom_rug(data=new.df,mapping=aes(x=scaled_WavePower,y=0))
@@ -1070,6 +1071,96 @@ plot2<-ggplot() +
 plot2
 
 
+#### Sector-level Cover x Heat stress- 
+l <- subset(new.df,MeanDHW10<4)
+
+newdata1<-l
+newdata1$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+newdata1$scaled_CORAL <- mean(l$scaled_CORAL)
+newdata1$scaled_CoralSec_A <-seq(min(l$scaled_CoralSec_A),max(l$scaled_CoralSec_A),
+                                 by=round(rg(l$scaled_CoralSec_A),4)/nrow(l))
+newdata1$scaled_SAND_RUB <- mean(l$scaled_SAND_RUB)
+newdata1$scaled_EMA_MA <- mean(l$scaled_EMA_MA)
+newdata1$scaled_Depth_Median<- mean(l$scaled_Depth_Median)
+newdata1$scaled_logHumanDen <- mean(l$scaled_logHumanDen)
+newdata1$scaled_WavePower <- mean(l$scaled_WavePower)
+newdata1$scaled_MeanDHW10<-mean(l$scaled_MeanDHW10)
+newdata1$scaled_YearSinceDHW4<-mean(l$scaled_YearSinceDHW4)
+
+
+h <- subset(new.df,MeanDHW10>=4)
+
+newdata2<-h
+newdata2$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+newdata2$scaled_CORAL <- mean(h$scaled_CORAL)
+newdata2$scaled_CoralSec_A <- seq(min(h$scaled_CoralSec_A),max(h$scaled_CoralSec_A),
+                                  by=round(rg(h$scaled_CoralSec_A),5)/nrow(h))
+newdata2$scaled_SAND_RUB <- mean(h$scaled_SAND_RUB)
+newdata2$scaled_EMA_MA <- mean(h$scaled_EMA_MA)
+newdata2$scaled_Depth_Median<- mean(h$scaled_Depth_Median)
+newdata2$scaled_logHumanDen <- mean(h$scaled_logHumanDen)
+newdata2$scaled_WavePower <- mean(h$scaled_WavePower)
+newdata2$scaled_MeanDHW10<-mean(h$scaled_MeanDHW10)
+newdata2$scaled_YearSinceDHW4<-mean(h$scaled_YearSinceDHW4)
+
+
+
+p <- predict(best.mod, newdata = newdata1, type = "response",se.fit=TRUE)
+p<-as.data.frame(p)
+colnames(p)<-c("Predicted_Juv","SE_Juv")
+newdata1<-cbind(newdata1,p)
+newdata1$Predict.lwr <- newdata1$Predicted_Juv - 1.96 * newdata1$SE_Juv # confidence interval upper bound
+newdata1$Predict.upr <- newdata1$Predicted_Juv + 1.96 * newdata1$SE_Juv # confidence interval lower bound
+newdata1$HSsev_cat<-"low"
+
+p <- predict(best.mod, newdata = newdata2, type = "response",se.fit=TRUE)
+p<-as.data.frame(p)
+colnames(p)<-c("Predicted_Juv","SE_Juv")
+newdata2<-cbind(newdata2,p)
+newdata2$Predict.lwr <- newdata2$Predicted_Juv - 1.96 * newdata2$SE_Juv # confidence interval upper bound
+newdata2$Predict.upr <- newdata2$Predicted_Juv + 1.96 * newdata2$SE_Juv # confidence interval lower bound
+newdata2$HSsev_cat<-"high"
+
+
+#Merge into 1 dataframe and add column for each HStsev category. 
+all.newdata<-rbind(newdata1,newdata2)
+
+
+#Unscaling predictor to plot on x axis
+att <- attributes(scale(new.df$scaled_CoralSec_A))
+mylabels <- seq(0,max(new.df$CoralSec_A),50000000)
+mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
+
+colors<-c("orange1","red3")
+
+#Reorder HSts variables
+all.newdata$HSsev_cat <- factor(all.newdata$HSsev_cat, levels = c("low","high"))
+all.newdata<- all.newdata[order(all.newdata$HSsev_cat),];head(all.newdata)
+
+#Plot
+plot3<-ggplot() +
+  geom_line(data=all.newdata,aes(x = scaled_CoralSec_A, y = Predicted_Juv,color=HSsev_cat),size=1) +
+  geom_ribbon(data = all.newdata,aes(x = scaled_CoralSec_A,ymin = Predict.lwr, ymax = Predict.upr,fill=HSsev_cat),alpha = 0.1)+
+  theme_bw() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.title = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.title=element_blank(),
+    legend.key.size = unit(1.5, 'cm'),
+    legend.text = element_text(size=16),
+    text = element_text(size = 18),
+    panel.grid = element_blank()
+  ) +
+  ylab(expression(bold(paste("Predicted Juvenile Colonies",m^-2)))) +
+  xlab(expression(bold("Sector % Coral Cover x Area (ha)")))  +
+  scale_color_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
+  scale_fill_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
+  scale_x_continuous(labels = comma(mylabels),breaks=mybreaks)+
+  scale_y_continuous(limits=c(-1,50))+
+  geom_rug(data=new.df,mapping=aes(x=scaled_CoralSec_A,y=0))
+
+plot3
 
 
 # save full plot
@@ -1079,6 +1170,7 @@ ytitle <- text_grob(expression(bold(paste("Predicted Juvenile Colonies",m^-2))),
 png(width = 1050, height = 600, filename = "Fig.5.png")
 grid.arrange(arrangeGrob(plot1 + ggtitle("A)"),
                          plot2 + ggtitle("B)"),
+                         plot3 + ggtitle("C)"),
                          nrow = 1), 
              nrow = 2, heights = c(10,1),
              left = ytitle)
