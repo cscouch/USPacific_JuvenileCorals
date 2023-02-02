@@ -130,7 +130,7 @@ wide<-left_join(wide,coord,by=c("REGION","ISLAND"))
 head(wide)
 wide<-wide[,c("REGION","ISLAND","Latitude","Longitude","T1","T2","T3")]
 
-wide$ISLAND <- factor(wide$ISLAND, levels = c("Kure","Pearl_&_Hermes","Lisianski","French_Frigate","Kauai",
+wide$ISLAND <- factor(wide$ISLAND, levels = c("Kure","Pearl_&_Hermes","Lisianski","French_Frigate","Kauai","Niihau","Laysan",
                                               "Oahu","Molokai","Maui","Lanai","Kahoolawe","Hawaii","Wake",
                                               "Howland","Baker","Kingman","Palmyra","Jarvis","Saipan","Tinian",
                                               "Rota","Aguijan","Guam","Farallon_de_Pajaros","Maug","Pagan","Asuncion",
@@ -138,7 +138,7 @@ wide$ISLAND <- factor(wide$ISLAND, levels = c("Kure","Pearl_&_Hermes","Lisianski
 wide<- wide[order(wide$ISLAND),];View(wide)
 
 
-write.csv(wide,file="T:/Benthic/Projects/Juvenile Project/Tables/Table1_v2.csv")
+write.csv(wide,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Tables/Table1.csv")
 
 
 #Dealing with missing Year Since DHW4 data:
@@ -917,7 +917,7 @@ colnames(p)<-c("Predicted_Juv","SE_Juv")
 newdata1<-cbind(newdata1,p)
 newdata1$Predict.lwr <- newdata1$Predicted_Juv - 1.96 * newdata1$SE_Juv # confidence interval upper bound
 newdata1$Predict.upr <- newdata1$Predicted_Juv + 1.96 * newdata1$SE_Juv # confidence interval lower bound
-newdata1$HSts_cat<-"0-3 years"
+newdata1$HSts_cat<-"0-3 yr"
 
 p <- predict(best.mod, newdata = newdata2, type = "response",se.fit=TRUE)
 p<-as.data.frame(p)
@@ -925,7 +925,7 @@ colnames(p)<-c("Predicted_Juv","SE_Juv")
 newdata2<-cbind(newdata2,p)
 newdata2$Predict.lwr <- newdata2$Predicted_Juv - 1.96 * newdata2$SE_Juv # confidence interval upper bound
 newdata2$Predict.upr <- newdata2$Predicted_Juv + 1.96 * newdata2$SE_Juv # confidence interval lower bound
-newdata2$HSts_cat<-"3-10 years"
+newdata2$HSts_cat<-"3-10 yr"
 
 p <- predict(best.mod, newdata = newdata3, type = "response",se.fit=TRUE)
 p<-as.data.frame(p)
@@ -933,7 +933,7 @@ colnames(p)<-c("Predicted_Juv","SE_Juv")
 newdata3<-cbind(newdata3,p)
 newdata3$Predict.lwr <- newdata3$Predicted_Juv - 1.96 * newdata3$SE_Juv # confidence interval upper bound
 newdata3$Predict.upr <- newdata3$Predicted_Juv + 1.96 * newdata3$SE_Juv # confidence interval lower bound
-newdata3$HSts_cat<-"> 10 years"
+newdata3$HSts_cat<-"> 10 yr"
 
 #Merge into 1 dataframe and add column for each HSts category. 
 all.newdata<-rbind(newdata1,newdata2,newdata3)
@@ -948,7 +948,7 @@ mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
 colors<-c("cyan4","purple3","gray67")
 
 #Reorder HSts variables
-all.newdata$HSts_cat <- factor(all.newdata$HSts_cat, levels = c("0-3 years","3-10 years","> 10 years"))
+all.newdata$HSts_cat <- factor(all.newdata$HSts_cat, levels = c("0-3 yr","3-10 yr","> 10 yr"))
 all.newdata<- all.newdata[order(all.newdata$HSts_cat),];head(all.newdata)
 
 
@@ -979,7 +979,221 @@ plot1<-ggplot() +
 
 plot1
 
-#### Wave Power x Heat stress- 
+
+# # NEW code for wave & cover x HS - swapping categorical variables ---------
+# 
+# #### Wave Power x Heat stress- 
+# l<- subset(new.df, subset=(new.df$WavePower < quantile(new.df$WavePower, 0.3))) #first quantile
+# 
+# newdata1<-l
+# newdata1$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+# newdata1$scaled_CORAL <- mean(l$scaled_CORAL)
+# newdata1$scaled_CoralSec_A <- mean(l$scaled_CoralSec_A)
+# newdata1$scaled_SAND_RUB <- mean(l$scaled_SAND_RUB)
+# newdata1$scaled_EMA_MA <- mean(l$scaled_EMA_MA)
+# newdata1$scaled_Depth_Median<- mean(l$scaled_Depth_Median)
+# newdata1$scaled_logHumanDen <- mean(l$scaled_logHumanDen)
+# newdata1$scaled_WavePower <- mean(l$scaled_WavePower)
+# newdata1$scaled_MeanDHW10<-seq(min(l$scaled_MeanDHW10),max(l$scaled_MeanDHW10),
+#                                by=round(rg(l$scaled_MeanDHW10),3)/nrow(l))
+# newdata1$scaled_YearSinceDHW4<-mean(l$scaled_YearSinceDHW4)
+# 
+# 
+# m <- subset(new.df, subset=((new.df$WavePower >= quantile(new.df$WavePower, 0.3)) & (new.df$WavePower < quantile(new.df$WavePower, 0.6))))
+# newdata2<-m
+# newdata2$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+# newdata2$scaled_CORAL <- mean(m$scaled_CORAL)
+# newdata2$scaled_CoralSec_A <- mean(m$scaled_CoralSec_A)
+# newdata2$scaled_SAND_RUB <- mean(m$scaled_SAND_RUB)
+# newdata2$scaled_EMA_MA <- mean(m$scaled_EMA_MA)
+# newdata2$scaled_WavePower <- mean(m$scaled_WavePower)
+# newdata2$scaled_Depth_Median<- mean(m$scaled_Depth_Median)
+# newdata2$scaled_logHumanDen <- mean(m$scaled_logHumanDen)
+# newdata2$scaled_MeanDHW10<-seq(min(m$scaled_MeanDHW10),max(m$scaled_MeanDHW10),
+#                                by=round(rg(m$scaled_MeanDHW10),3)/nrow(m))
+# newdata2$scaled_YearSinceDHW4<-mean(m$scaled_YearSinceDHW4)
+# 
+# 
+# h <- subset(new.df, subset=(new.df$WavePower >= quantile(new.df$WavePower, 0.6)))
+# newdata3<-h
+# newdata3$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+# newdata3$scaled_CORAL <- mean(h$scaled_CORAL)
+# newdata3$scaled_CoralSec_A <- mean(h$scaled_CoralSec_A)
+# newdata3$scaled_SAND_RUB <- mean(h$scaled_SAND_RUB)
+# newdata3$scaled_EMA_MA <- mean(h$scaled_EMA_MA)
+# newdata3$scaled_WavePower <- mean(h$scaled_WavePower)
+# newdata3$scaled_Depth_Median<- mean(h$scaled_Depth_Median)
+# newdata3$scaled_logHumanDen <- mean(h$scaled_logHumanDen)
+# newdata3$scaled_MeanDHW10<-seq(min(h$scaled_MeanDHW10),max(h$scaled_MeanDHW10),
+#                                by=round(rg(h$scaled_MeanDHW10),5)/nrow(h))
+# newdata3$scaled_YearSinceDHW4<-mean(h$scaled_YearSinceDHW4)
+# 
+# 
+# 
+# p <- predict(best.mod, newdata = newdata1, type = "response",se.fit=TRUE)
+# p<-as.data.frame(p)
+# colnames(p)<-c("Predicted_Juv","SE_Juv")
+# newdata1<-cbind(newdata1,p)
+# newdata1$Predict.lwr <- newdata1$Predicted_Juv - 1.96 * newdata1$SE_Juv # confidence interval upper bound
+# newdata1$Predict.upr <- newdata1$Predicted_Juv + 1.96 * newdata1$SE_Juv # confidence interval lower bound
+# newdata1$WP_cat<-"Low Wave Power"
+# 
+# p <- predict(best.mod, newdata = newdata2, type = "response",se.fit=TRUE)
+# p<-as.data.frame(p)
+# colnames(p)<-c("Predicted_Juv","SE_Juv")
+# newdata2<-cbind(newdata2,p)
+# newdata2$Predict.lwr <- newdata2$Predicted_Juv - 1.96 * newdata2$SE_Juv # confidence interval upper bound
+# newdata2$Predict.upr <- newdata2$Predicted_Juv + 1.96 * newdata2$SE_Juv # confidence interval lower bound
+# newdata2$WP_cat<-"Medium Wave Power"
+# 
+# p <- predict(best.mod, newdata = newdata3, type = "response",se.fit=TRUE)
+# p<-as.data.frame(p)
+# colnames(p)<-c("Predicted_Juv","SE_Juv")
+# newdata3<-cbind(newdata3,p)
+# newdata3$Predict.lwr <- newdata3$Predicted_Juv - 1.96 * newdata3$SE_Juv # confidence interval upper bound
+# newdata3$Predict.upr <- newdata3$Predicted_Juv + 1.96 * newdata3$SE_Juv # confidence interval lower bound
+# newdata3$WP_cat<-"High Wave Power"
+# 
+# #Merge into 1 dataframe and add column for each HSts category. 
+# all.newdata<-rbind(newdata1,newdata2,newdata3)
+# 
+# 
+# #Unscaling predictor to plot on x axis
+# att <- attributes(scale(new.df$MeanDHW10))
+# mylabels <- seq(0,14,2)
+# mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
+# 
+# #colors<-c("cyan4","purple3","goldenrod2")
+# colors<-c("cyan4","purple3","goldenrod2")
+# 
+# #Reorder HSts variables
+# all.newdata$WP_cat <- factor(all.newdata$WP_cat, levels = c("Low Wave Power","Medium Wave Power","High Wave Power"))
+# all.newdata<- all.newdata[order(all.newdata$WP_cat),];head(all.newdata)
+# 
+# 
+# 
+# #Plot
+# plot2<-ggplot() +
+#   geom_line(data=all.newdata,aes(x = scaled_MeanDHW10, y = Predicted_Juv,color=WP_cat),size=1) +
+#   geom_ribbon(data = all.newdata,aes(x = scaled_MeanDHW10,ymin = Predict.lwr, ymax = Predict.upr,fill=WP_cat),alpha = 0.1)+
+#   theme_bw() +
+#   theme(
+#     axis.title.y = element_blank(),
+#     axis.title = element_text(face = "bold"),
+#     legend.position = "bottom",
+#     legend.title=element_blank(),
+#     legend.key.size = unit(1.5, 'cm'),
+#     legend.text = element_text(size=16),
+#     text = element_text(size = 18),
+#     panel.grid = element_blank()
+#   ) +
+#   ylab(expression(bold(paste("Predicted Juvenile Colonies",m^-2)))) +
+#   xlab(expression(bold('Mean Max '^o*'C-weeks')))  +
+#   scale_color_manual(values = colors)+
+#   scale_fill_manual(values = colors)+
+#   scale_x_continuous(labels = comma(mylabels),breaks=mybreaks)+
+#   scale_y_continuous(limits=c(-1,30))+
+#   geom_rug(data=new.df,mapping=aes(x=scaled_MeanDHW10,y=0))
+# 
+# 
+# plot2
+# 
+# 
+# #### Sector-level Cover x Heat stress- 
+# l <- subset(new.df,MeanDHW10<4)
+# 
+# newdata1<-l
+# newdata1$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+# newdata1$scaled_CORAL <- mean(l$scaled_CORAL)
+# newdata1$scaled_CoralSec_A <-seq(min(l$scaled_CoralSec_A),max(l$scaled_CoralSec_A),
+#                                  by=round(rg(l$scaled_CoralSec_A),4)/nrow(l))
+# newdata1$scaled_SAND_RUB <- mean(l$scaled_SAND_RUB)
+# newdata1$scaled_EMA_MA <- mean(l$scaled_EMA_MA)
+# newdata1$scaled_Depth_Median<- mean(l$scaled_Depth_Median)
+# newdata1$scaled_logHumanDen <- mean(l$scaled_logHumanDen)
+# newdata1$scaled_WavePower <- mean(l$scaled_WavePower)
+# newdata1$scaled_MeanDHW10<-mean(l$scaled_MeanDHW10)
+# newdata1$scaled_YearSinceDHW4<-mean(l$scaled_YearSinceDHW4)
+# 
+# 
+# h <- subset(new.df,MeanDHW10>=4)
+# 
+# newdata2<-h
+# newdata2$TRANSECTAREA_j <- 1 #Need to keep survey area constant
+# newdata2$scaled_CORAL <- mean(h$scaled_CORAL)
+# newdata2$scaled_CoralSec_A <- seq(min(h$scaled_CoralSec_A),max(h$scaled_CoralSec_A),
+#                                   by=round(rg(h$scaled_CoralSec_A),5)/nrow(h))
+# newdata2$scaled_SAND_RUB <- mean(h$scaled_SAND_RUB)
+# newdata2$scaled_EMA_MA <- mean(h$scaled_EMA_MA)
+# newdata2$scaled_Depth_Median<- mean(h$scaled_Depth_Median)
+# newdata2$scaled_logHumanDen <- mean(h$scaled_logHumanDen)
+# newdata2$scaled_WavePower <- mean(h$scaled_WavePower)
+# newdata2$scaled_MeanDHW10<-mean(h$scaled_MeanDHW10)
+# newdata2$scaled_YearSinceDHW4<-mean(h$scaled_YearSinceDHW4)
+# 
+# 
+# 
+# p <- predict(best.mod, newdata = newdata1, type = "response",se.fit=TRUE)
+# p<-as.data.frame(p)
+# colnames(p)<-c("Predicted_Juv","SE_Juv")
+# newdata1<-cbind(newdata1,p)
+# newdata1$Predict.lwr <- newdata1$Predicted_Juv - 1.96 * newdata1$SE_Juv # confidence interval upper bound
+# newdata1$Predict.upr <- newdata1$Predicted_Juv + 1.96 * newdata1$SE_Juv # confidence interval lower bound
+# newdata1$HSsev_cat<-"low"
+# 
+# p <- predict(best.mod, newdata = newdata2, type = "response",se.fit=TRUE)
+# p<-as.data.frame(p)
+# colnames(p)<-c("Predicted_Juv","SE_Juv")
+# newdata2<-cbind(newdata2,p)
+# newdata2$Predict.lwr <- newdata2$Predicted_Juv - 1.96 * newdata2$SE_Juv # confidence interval upper bound
+# newdata2$Predict.upr <- newdata2$Predicted_Juv + 1.96 * newdata2$SE_Juv # confidence interval lower bound
+# newdata2$HSsev_cat<-"high"
+# 
+# 
+# #Merge into 1 dataframe and add column for each HStsev category. 
+# all.newdata<-rbind(newdata1,newdata2)
+# 
+# 
+# #Unscaling predictor to plot on x axis
+# att <- attributes(scale(new.df$scaled_CoralSec_A))
+# mylabels <- seq(0,max(new.df$CoralSec_A),50000000)
+# mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
+# 
+# colors<-c("orange1","red3")
+# 
+# #Reorder HSts variables
+# all.newdata$HSsev_cat <- factor(all.newdata$HSsev_cat, levels = c("low","high"))
+# all.newdata<- all.newdata[order(all.newdata$HSsev_cat),];head(all.newdata)
+# 
+# #Plot
+# plot3<-ggplot() +
+#   geom_line(data=all.newdata,aes(x = scaled_CoralSec_A, y = Predicted_Juv,color=HSsev_cat),size=1) +
+#   geom_ribbon(data = all.newdata,aes(x = scaled_CoralSec_A,ymin = Predict.lwr, ymax = Predict.upr,fill=HSsev_cat),alpha = 0.1)+
+#   theme_bw() +
+#   theme(
+#     axis.title.y = element_blank(),
+#     axis.title = element_text(face = "bold"),
+#     legend.position = "bottom",
+#     legend.title=element_blank(),
+#     legend.key.size = unit(1.5, 'cm'),
+#     legend.text = element_text(size=16),
+#     text = element_text(size = 18),
+#     panel.grid = element_blank()
+#   ) +
+#   ylab(expression(bold(paste("Predicted Juvenile Colonies",m^-2)))) +
+#   xlab(expression(bold("Sector % Coral Cover x Area (ha)")))  +
+#   scale_color_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
+#   scale_fill_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
+#   scale_x_continuous(labels = comma(mylabels),breaks=mybreaks)+
+#   scale_y_continuous(limits=c(-1,50))+
+#   geom_rug(data=new.df,mapping=aes(x=scaled_CoralSec_A,y=0))
+# 
+# plot3
+
+
+# ORIGINAL plots for wave and coral x HS ----------------------------------
+
+#### Wave Power x Heat stress-
 l <- subset(new.df,MeanDHW10<4)
 
 newdata1<-l
@@ -1030,7 +1244,7 @@ newdata2$Predict.upr <- newdata2$Predicted_Juv + 1.96 * newdata2$SE_Juv # confid
 newdata2$HSsev_cat<-"high"
 
 
-#Merge into 1 dataframe and add column for each HStsev category. 
+#Merge into 1 dataframe and add column for each HStsev category.
 all.newdata<-rbind(newdata1,newdata2)
 
 
@@ -1071,7 +1285,7 @@ plot2<-ggplot() +
 plot2
 
 
-#### Sector-level Cover x Heat stress- 
+#### Sector-level Cover x Heat stress-
 l <- subset(new.df,MeanDHW10<4)
 
 newdata1<-l
@@ -1122,7 +1336,7 @@ newdata2$Predict.upr <- newdata2$Predicted_Juv + 1.96 * newdata2$SE_Juv # confid
 newdata2$HSsev_cat<-"high"
 
 
-#Merge into 1 dataframe and add column for each HStsev category. 
+#Merge into 1 dataframe and add column for each HStsev category.
 all.newdata<-rbind(newdata1,newdata2)
 
 
@@ -1167,7 +1381,9 @@ plot3
 setwd("T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/")
 ytitle <- text_grob(expression(bold(paste("Predicted Juvenile Colonies",m^-2))), size = 18,
                     face = "bold", rot = 90,hjust=0.2)
-png(width = 1050, height = 600, filename = "Fig.5.png")
+#png(width = 1050, height = 600, filename = "Fig.5.png")
+pdf(width = 15, height = 10, file= "Fig.5.pdf")
+
 grid.arrange(arrangeGrob(plot1 + ggtitle("A)"),
                          plot2 + ggtitle("B)"),
                          plot3 + ggtitle("C)"),
