@@ -290,7 +290,7 @@ des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=new.df)
 
 # Testing for polynomial relationships -----------------------------------------------------
 
-#Testing polynomial relationships with depth
+#Testing polynomial relationships with DEPTH
 d_poly3<-svyglm(JuvColCount ~  
                   poly(scaled_Depth_Median,3),
                 design=des, family="poisson",offset=log(TRANSECTAREA_j))
@@ -340,7 +340,7 @@ ggplot(newdata, aes(x = scaled_Depth_Median, y = Predicted_Juv)) +
     scale_x_continuous(labels=mylabels,breaks=mybreaks)
 
 
-#Testing polynomial realtionships with Coral
+#Testing polynomial relationships with site-level CORAL COVER
 d_poly3<-svyglm(JuvColCount ~  
                   poly(scaled_CORAL,3),
                 design=des, family="poisson",offset=log(TRANSECTAREA_j))
@@ -471,6 +471,10 @@ ggplot(newdata, aes(x = scaled_CoralSec_A, y = Predicted_Juv)) +
 
 
 ##### MANUSCRIPT- Model selection no chla x dhw interactions, but dhw x benthic interactions ####
+new.df$Strat_conc<-paste(new.df$OBS_YEAR, new.df$REGION,new.df$ISLAND,new.df$STRATANAME,sep = "_")
+
+des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=new.df)
+
 
 #Global model 
 global.mod3<-svyglm(JuvColCount ~
@@ -481,7 +485,7 @@ global.mod3<-svyglm(JuvColCount ~
                       scaled_SAND_RUB*scaled_MeanDHW10 +
                       poly(scaled_Depth_Median,2,raw=TRUE)*scaled_MeanDHW10 +
                       scaled_Meanchla +
-                      #scaled_MeanSST +
+                      scaled_MeanSST +
                       scaled_WavePower*scaled_MeanDHW10+
                       scaled_YearSinceDHW4*scaled_MeanDHW10+
                       scaled_logHumanDen*scaled_MeanDHW10,
@@ -493,38 +497,42 @@ summary(global.mod3)
 cor(global.mod3$y, fitted(global.mod3))^2
 
 #Backwards model selection
-RED.MOD1 <- update(global.mod3, .~. -scaled_MeanDHW10:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop 2-way interaction term
+RED.MOD1 <- update(global.mod3, .~. -scaled_MeanDHW10:scaled_EMA_MA) #drop 2-way interaction term
 anova(global.mod3, RED.MOD1,method="Wald") #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD1)
 
 
-RED.MOD2 <- update(RED.MOD1, .~. -scaled_CCA:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop 2-way interaction term
+RED.MOD2 <- update(RED.MOD1, .~. -scaled_MeanDHW10:scaled_SAND_RUB) #drop 2-way interaction term
 anova(RED.MOD1, RED.MOD2) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD2)
 
-RED.MOD3 <- update(RED.MOD2, .~. -scaled_MeanDHW10:scaled_SAND_RUB) #drop 2-way interaction term
+RED.MOD3 <- update(RED.MOD2, .~. -poly(scaled_CORAL, 3, raw = TRUE):scaled_MeanDHW10) #drop 2-way interaction term
 anova(RED.MOD2, RED.MOD3,test = "Chisq") #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD3)
 
-RED.MOD4 <- update(RED.MOD3, .~. -scaled_MeanDHW10:scaled_EMA_MA) #drop 2-way interaction term
+RED.MOD4 <- update(RED.MOD3, .~. -scaled_CCA:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop 2-way interaction term
 anova(RED.MOD3, RED.MOD4) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD4)
 
-RED.MOD5 <- update(RED.MOD4, .~. -poly(scaled_CORAL, 3, raw = TRUE):scaled_MeanDHW10) #drop 2-way interaction term
+RED.MOD5 <- update(RED.MOD4, .~. -scaled_MeanDHW10:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop 2-way interaction term
 anova(RED.MOD4, RED.MOD5) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD5)
 
-RED.MOD6 <- update(RED.MOD5, .~. -scaled_MeanDHW10:scaled_logHumanDen) #drop 2-way interaction term
+RED.MOD6 <- update(RED.MOD5, .~. -scaled_Meanchla) #drop 2-way interaction term
 anova(RED.MOD5, RED.MOD6) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD6)
 
-RED.MOD7 <- update(RED.MOD6, .~. -scaled_Meanchla) #drop 2-way interaction term
+RED.MOD7 <- update(RED.MOD6, .~. -scaled_MeanDHW10:scaled_logHumanDen) #drop 2-way interaction term
 anova(RED.MOD6, RED.MOD7) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD7)
 
 RED.MOD8 <- update(RED.MOD7, .~. -scaled_CCA) #drop 2-way interaction term
 anova(RED.MOD7, RED.MOD8) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD8)
+
+RED.MOD9 <- update(RED.MOD8, .~. -scaled_MeanSST) #drop 2-way interaction term
+anova(RED.MOD8, RED.MOD9) #LRT --> move forward w/ whichever model keeps/removes term
+summary(RED.MOD9)
 
 RED.MOD9 <- update(RED.MOD8, .~. -scaled_EMA_MA) #drop 2-way interaction term
 anova(RED.MOD9, RED.MOD8) #LRT --> move forward w/ whichever model keeps/removes term
