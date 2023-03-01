@@ -1,4 +1,4 @@
-#This script generates average human density estimates for the area 2.5 around each juvenile site then merges the data with the site-level juvenile data
+#This script generates average human density estimates for the area 2.5 min around each juvenile site then merges the data with the site-level juvenile data
 #Human Density data downloaded from https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-rev11/data-download
 
 # Using R version 4.1.0 (2021-05-18)
@@ -10,6 +10,7 @@ library(readr)
 library(ncdf4)
 dir = Sys.info()[7]
 
+#Read in human density data
 gpw_pop <- stack(paste0("T:/Benthic/Projects/Juvenile Project/Data/gpw_v4_population_density_rev11_2pt5_min.nc"))
 
 gpw_pop1 <- gpw_pop[["X1"]] #2000 pop density estimate
@@ -18,14 +19,16 @@ gpw_pop3 <- gpw_pop[["X3"]] #2010 pop density estimate
 gpw_pop4 <- gpw_pop[["X4"]] #2015 pop density estimate
 #gpw_pop5 <- gpw_pop[["X5"]] #2020 pop density estimate
 
+#Average 200-2015 data
 gpw_pop = stack(gpw_pop1, gpw_pop2, gpw_pop3, gpw_pop4)
 gpw_pop = mean(gpw_pop)
 
 plot(log10(gpw_pop))
 
+#Read in site-level juvenile data
 df = read.csv("T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv")
 
-
+#Convert to a spatial points dataframe
 df = df[complete.cases(df[,c("LONGITUDE", "LATITUDE")]), ]
 df_sp = df
 coordinates(df_sp) = ~LONGITUDE + LATITUDE
@@ -40,6 +43,8 @@ colnames(this_Ex)[1] = "HumanDen"
 df = cbind(df, this_Ex)
 nohum<-c("BAK","HOW","JAR","KIN","MAR","LIS","LAY","FFS","PHR","KUR")
 
+
+#Several of the islands do actually have year-round field staff, or the values in the NASA data are not accurate. Correct this using the following code
 df<-df %>%
   mutate(HumanDen = dplyr::case_when(ISLAND =="Wake" ~ 150/25,
                                      ISLAND =="Midway" ~ 40/25,
