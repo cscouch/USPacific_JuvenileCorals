@@ -138,7 +138,7 @@ wide$ISLAND <- factor(wide$ISLAND, levels = c("Kure","Pearl_&_Hermes","Lisianski
 wide<- wide[order(wide$ISLAND),];View(wide)
 
 
-write.csv(wide,file="T:/Benthic/Projects/Juvenile Project/Tables/Table1_v2.csv")
+write.csv(wide,file="T:/Benthic/Projects/Juvenile Project/Tables/TableS1.csv")
 
 
 #Dealing with missing Year Since DHW4 data:
@@ -497,53 +497,51 @@ summary(global.mod3)
 cor(global.mod3$y, fitted(global.mod3))^2
 
 #Backwards model selection
-RED.MOD1 <- update(global.mod3, .~. -scaled_MeanDHW10:scaled_EMA_MA) #drop 2-way interaction term
+RED.MOD1 <- update(global.mod3, .~. -scaled_MeanDHW10:scaled_EMA_MA) #drop term
 anova(global.mod3, RED.MOD1,method="Wald") #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD1)
 
 
-RED.MOD2 <- update(RED.MOD1, .~. -scaled_MeanDHW10:scaled_SAND_RUB) #drop 2-way interaction term
+RED.MOD2 <- update(RED.MOD1, .~. -scaled_MeanDHW10:scaled_SAND_RUB) #drop  term
 anova(RED.MOD1, RED.MOD2) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD2)
 
-RED.MOD3 <- update(RED.MOD2, .~. -poly(scaled_CORAL, 3, raw = TRUE):scaled_MeanDHW10) #drop 2-way interaction term
+RED.MOD3 <- update(RED.MOD2, .~. -poly(scaled_CORAL, 3, raw = TRUE):scaled_MeanDHW10) #drop term
 anova(RED.MOD2, RED.MOD3,test = "Chisq") #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD3)
 
-RED.MOD4 <- update(RED.MOD3, .~. -scaled_CCA:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop 2-way interaction term
+RED.MOD4 <- update(RED.MOD3, .~. -scaled_CCA:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop term
 anova(RED.MOD3, RED.MOD4) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD4)
 
-RED.MOD5 <- update(RED.MOD4, .~. -scaled_MeanDHW10:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop 2-way interaction term
+RED.MOD5 <- update(RED.MOD4, .~. -scaled_MeanDHW10:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop term
 anova(RED.MOD4, RED.MOD5) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD5)
 
-RED.MOD6 <- update(RED.MOD5, .~. -scaled_Meanchla) #drop 2-way interaction term
+RED.MOD6 <- update(RED.MOD5, .~. -scaled_Meanchla) #drop term
 anova(RED.MOD5, RED.MOD6) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD6)
 
-RED.MOD7 <- update(RED.MOD6, .~. -scaled_MeanDHW10:scaled_logHumanDen) #drop 2-way interaction term
+RED.MOD7 <- update(RED.MOD6, .~. -scaled_MeanDHW10:scaled_logHumanDen) #drop term
 anova(RED.MOD6, RED.MOD7) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD7)
 
-RED.MOD8 <- update(RED.MOD7, .~. -scaled_CCA) #drop 2-way interaction term
+RED.MOD8 <- update(RED.MOD7, .~. -scaled_CCA) #drop term
 anova(RED.MOD7, RED.MOD8) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD8)
 
-RED.MOD9 <- update(RED.MOD8, .~. -scaled_MeanSST) #drop 2-way interaction term
+RED.MOD9 <- update(RED.MOD8, .~. -scaled_MeanSST) #drop term
 anova(RED.MOD8, RED.MOD9) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD9)
 
-RED.MOD9 <- update(RED.MOD8, .~. -scaled_EMA_MA) #drop 2-way interaction term
-anova(RED.MOD9, RED.MOD8) #LRT --> move forward w/ whichever model keeps/removes term
-summary(RED.MOD9)
+RED.MOD10 <- update(RED.MOD9, .~. -scaled_EMA_MA) #drop term
+anova(RED.MOD9, RED.MOD10) #LRT --> move forward w/ whichever model keeps/removes term
+summary(RED.MOD10)
 
-
-AIC(RED.MOD7)
-AIC(RED.MOD8)
 AIC(RED.MOD9)
+AIC(RED.MOD10)
 
-best.mod<-RED.MOD8
+best.mod<-RED.MOD9
 summary(best.mod)
 
 #Only option to generate a R2 like metric for these kinds of models
@@ -567,7 +565,6 @@ head(sum.co)
 
 sum.co <- sum.co[ which(sum.co$Variable != "(Intercept)"),]
 
-#expression(bold('Mean Max '^o*'C-weeks'))
 
 # sum.co$Variable <- factor(sum.co$Variable, levels = var_ord)
 # sum.co <- sum.co[order(factor(sum.co$Variable, levels = var_ord)),]
@@ -602,7 +599,7 @@ sum.co$Variable_plot <- factor(c("Depth",
                                           "Heat Stress",
                                           "Wave Power"))
 
-write.csv(sum.co,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Tables/Table S2_v2.csv")
+write.csv(sum.co,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Tables/Table S3_unformatted.csv")
 
 
 sum.co$Sig <- NA
@@ -853,7 +850,8 @@ setwd("T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/")
 # ytitle <- text_grob("Predicted Juvenile Colonies/m2", size = 18, face = "bold", rot = 90)
 
 ytitle <- text_grob(expression(bold(paste("Predicted Juvenile Colonies",m^-2))), size = 18, face = "bold", rot = 90)
-png(width = 1050, height = 950, filename = "Figure 4.png")
+pdf(width = 16, height = 14.5,file = "Figure 4.pdf") #Then convert to jpeg in Adobe for best quality
+
 grid.arrange(arrangeGrob(depth.plot + ggtitle("A)"),
                          coral.plot + ggtitle("B)"),
                          tsdhw.plot + ggtitle("C)"), 
@@ -1135,7 +1133,7 @@ all.newdata<-rbind(newdata1,newdata2)
 
 #Unscaling predictor to plot on x axis
 att <- attributes(scale(new.df$scaled_CoralSec_A))
-mylabels <- seq(0,max(new.df$CoralSec_A),50000000)
+mylabels <- seq(0,max(new.df$CoralSec_A),50000000);mylabels
 mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
 
 colors<-c("orange1","red3")
@@ -1164,7 +1162,7 @@ plot3<-ggplot() +
   scale_color_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
   scale_fill_manual(labels=c(expression('< 4 '^o*'C-wk'),expression(""> '4 '^o*'C-wk')),values = colors)+
   scale_x_continuous(labels = comma(mylabels),breaks=mybreaks)+
-  scale_y_continuous(limits=c(-1,50))+
+  scale_y_continuous(limits=c(-1,85))+
   geom_rug(data=new.df,mapping=aes(x=scaled_CoralSec_A,y=0))
 
 plot3
@@ -1172,9 +1170,9 @@ plot3
 
 # save full plot
 setwd("T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/")
-ytitle <- text_grob(expression(bold(paste("Predicted Juvenile Colonies",m^-2))), size = 18,
+ytitle <- text_grob(expression(bold(paste("Predicted Juvenile Colonies ",m^-2))), size = 18,
                     face = "bold", rot = 90,hjust=0.2)
-png(width = 1050, height = 600, filename = "Fig.5.png")
+pdf(width = 16, height = 9.25, file = "Fig.5.pdf")
 grid.arrange(arrangeGrob(plot1 + ggtitle("A)"),
                          plot2 + ggtitle("B)"),
                          plot3 + ggtitle("C)"),
