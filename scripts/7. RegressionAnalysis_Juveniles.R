@@ -48,9 +48,7 @@ setwd("T:/Benthic/Projects/Juvenile Project")
 
 #LOAD DATA
 df<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/JuvDen_Pred_SITE_AllYears.csv")#Combined juvenile delta density and all predictors
-jcdG_st<-read.csv("T:/Benthic/Projects/Juvenile Project/JuvProject_STRATA_WITHOUT_MHI2013.csv")
 cover_sec<-read.csv("T:/Benthic/Projects/Juvenile Project/BenthicCover_JuvenileProject_Tier1_SECTOR.csv")
-
 
 #remove columns
 df<-subset(df,select=c(DATE_,OBS_YEAR,REGION,ISLAND,SEC_NAME,DEPTH_BIN,REEF_ZONE,STRATANAME,HABITAT_CODE,SITE,n,NH,sw,TRANSECTAREA_j,JuvColCount,JuvColDen,
@@ -476,7 +474,7 @@ new.df$Strat_conc<-paste(new.df$OBS_YEAR, new.df$REGION,new.df$ISLAND,new.df$STR
 des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=new.df)
 
 
-#Global model 
+#Global model
 global.mod3<-svyglm(JuvColCount ~
                       poly(scaled_CORAL,3,raw=TRUE)*scaled_MeanDHW10+ 
                       scaled_CCA*poly(scaled_Depth_Median,2,raw=TRUE)+
@@ -489,7 +487,7 @@ global.mod3<-svyglm(JuvColCount ~
                       scaled_WavePower*scaled_MeanDHW10+
                       scaled_YearSinceDHW4*scaled_MeanDHW10+
                       scaled_logHumanDen*scaled_MeanDHW10,
-                    design=des, family="poisson",offset=log(TRANSECTAREA_j))
+                    design=des, family="poisson",offset=log(TRANSECTAREA_j)) #also tried quasipoisson -no change in model??
 
 summary(global.mod3)
 
@@ -547,6 +545,18 @@ summary(best.mod)
 #Only option to generate a R2 like metric for these kinds of models
 cor(best.mod$y, fitted(best.mod))^2
 
+svydfbetas(best.mod)
+svystdres(best.mod,doplot=TRUE)
+svyhat(best.mod,doplot = TRUE)
+library(car)
+influencePlot(best.mod)
+
+#We have overdispersion
+res <- residuals(best.mod, type="deviance")
+plot(log(predict(best.mod)), res)
+abline(h=0, lty=2)
+qqnorm(res)
+qqline(res)
 
 
 # PARAMETER ESTIMATES +/- SE ----------------------------------------------

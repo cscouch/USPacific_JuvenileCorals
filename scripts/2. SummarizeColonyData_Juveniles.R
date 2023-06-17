@@ -9,6 +9,10 @@ rm(list=ls())
 #LOAD LIBRARY FUNCTION ...
 source("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/scripts/Functions_Juveniles.R")
 
+library(DHARMa)
+citation("DHARMa")
+#https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
+
 #LOAD DATA
 jwd<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/CoralBelt_Juveniles_raw_CLEANED.csv")
 
@@ -242,6 +246,22 @@ temp_Rmean<-svyby(~JuvColDen,~OBS_YEAR+REGION,des,svymean)
 #Test fixed effects of region and year
 modR<-svyglm(JuvColCount ~ REGION*OBS_YEAR, design=des,offset= TRANSECTAREA_j, family="poisson")
 anova(modR)
+summary(modR)
+
+#Diagnostics
+
+svydfbetas(modR)
+svystdres(modR,doplot=TRUE)
+svyhat(modR,doplot = TRUE)
+library(car)
+influencePlot(modR)
+
+res <- residuals(modR, type="deviance")
+plot(log(predict(modR)), res)
+abline(h=0, lty=2)
+qqnorm(res)
+qqline(res)
+
 
 #Run separate post hoc tests for each region to test for differences between years- I don't care about comparing all possible combinations of year and region
 library(multcomp)
@@ -249,6 +269,7 @@ library(multcomp)
 mhi.des<-svydesign(id=~1, strata=~Strat_conc, weights=~sw,data=subset(data.temporal,REGION=="MHI"))
 mhi<-svyglm(JuvColCount ~ OBS_YEAR, design=mhi.des,offset= TRANSECTAREA_j, family="poisson")
 summary(glht(mhi, mcp(OBS_YEAR="Tukey"))) 
+svystdres(mhi,doplot=TRUE)
 
 wake.des<-svydesign(id=~1, strata=~Strat_conc, weights=~sw,data=subset(data.temporal,REGION=="WAKE"))
 wake<-svyglm(JuvColCount ~ OBS_YEAR, design=wake.des,offset= TRANSECTAREA_j, family="poisson")
@@ -329,6 +350,8 @@ nrow(site.swS) #total number of sites used in the spatial analysis
 #Use survey package to calculate mean SE and conduct statistical analyses
 site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
 site.swS$REGION<-as.factor(site.swS$REGION)
+
+site.swS<-subset(site.swS,n>2)
 
 #Establish survey design
 site.swS$Strat_conc<-paste(site.swS$OBS_YEAR, site.swS$REGION,site.swS$ISLAND,site.swS$SEC_NAME,site.swS$DB_RZ,sep = "_")
