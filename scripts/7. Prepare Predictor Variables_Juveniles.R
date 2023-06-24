@@ -27,28 +27,22 @@ library(RCurl)
 
 #LOAD DATA
 jwd_site<-read.csv("T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights_AllYears_wHD.csv") #This dataframe has both juvenile and human density data
-
-tsdhw<-read.csv("T:/Benthic/Projects/Juvenile Project/Juvenile_TimeSinceDHW4_8_v2.csv"); tsdhw<-subset(tsdhw,select= -c(X,ISLAND))
-wave<-read.csv("T:/Benthic/Projects/Juvenile Project/Pacific_WaveActionData_v5.csv")
-
-
-#githubURL <- "https://github.com/cscouch/USPacific_JuvenileCorals/blob/main/Data/Survey_Master_Timeseries_2022-04-04.Rdata?raw=true"
-# githubURL <- "https://github.com/krtanaka/env_data_summary/blob/main/outputs/EDS_Timeseries_2022-12-08.Rdata?raw=true"
-# load(url(githubURL))
-
-
-load("C:/Users/courtney.s.couch/Documents/GitHub/env_data_summary/outputs/EDS_Timeseries_2022-12-08.Rdata")
-
-#reformat SM to merge with coral data. 
-SM <- df %>% select("site_visit_id","mean_Chlorophyll_A_ESA_OC_CCI_8Day_DY01": "mean_weekly_range_SST_CRW_CoralTemp_Daily_ALLB4")
-colnames(SM)[colnames(SM)=="site_visit_id"]<-"SITEVISITID" #Change column name
-
-
-
 cover1<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier1_SITE.csv")#Cover from all sites
 cover3<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier3_SITE.csv")#Cover from all sites
 sectors<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/data/Sectors-Strata-Areas.csv", stringsAsFactors=FALSE)
 
+tsdhw<-read.csv("T:/Benthic/Projects/Juvenile Project/Juvenile_TimeSinceDHW4_8_v2.csv"); tsdhw<-subset(tsdhw,select= -c(X,ISLAND))
+wave<-read.csv("T:/Benthic/Projects/Juvenile Project/Pacific_WaveActionData_v5.csv")
+fish<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/PacificNCRMPStrata_FISH.csv")
+
+#Load environmental data
+#githubURL <- "https://github.com/cscouch/USPacific_JuvenileCorals/blob/main/Data/Survey_Master_Timeseries_2022-04-04.Rdata?raw=true"
+# githubURL <- "https://github.com/krtanaka/env_data_summary/blob/main/outputs/EDS_Timeseries_2022-12-08.Rdata?raw=true"
+# load(url(githubURL))
+load("C:/Users/courtney.s.couch/Documents/GitHub/env_data_summary/outputs/EDS_Timeseries_2022-12-08.Rdata")
+
+
+# Dataframe formatting ----------------------------------------------------
 
 #Change Region Names to correspond to juvenile data
 Convert_Region<-function(data){
@@ -65,8 +59,7 @@ Convert_Region<-function(data){
   return(data$REGION)
 }
 
-cover1$REGION<-Convert_Region(cover1)
-cover3$REGION<-Convert_Region(cover3)
+
 sectors$REGION<-Convert_Region(sectors)
 jwd_site$REGION<-Convert_Region(jwd_site)
 
@@ -79,14 +72,6 @@ jwd_site <- mutate_if(jwd_site,
 wave<-mutate_if(wave, 
                 is.character, 
                 str_replace_all, pattern = " ", replacement = "_")
-cover1<-mutate_if(cover1, 
-              is.character, 
-              str_replace_all, pattern = " ", replacement = "_")
-
-cover3<-mutate_if(cover3, 
-                  is.character, 
-                  str_replace_all, pattern = " ", replacement = "_")
-
 sectors<-mutate_if(sectors, 
                   is.character, 
                   str_replace_all, pattern = " ", replacement = "_")
@@ -109,7 +94,12 @@ jwd_site<-jwd_site %>%
   mutate(Depth_Median=median(c(MIN_DEPTH_M,MAX_DEPTH_M)))
 
 
-#Subset survey master and env columns of interest -not prior to 10/14/22, I was using the 750m VIIRS Chla data, but the data only goes back to 2012. Swaping in 4km data
+# SATELITE DATA PREP ------------------------------------------------------
+
+#Subset survey master and env columns of interest
+#reformat environmental data (SM) to merge with coral data. 
+SM <- df %>% select("site_visit_id","mean_Chlorophyll_A_ESA_OC_CCI_8Day_DY01": "mean_weekly_range_SST_CRW_CoralTemp_Daily_ALLB4")
+colnames(SM)[colnames(SM)=="site_visit_id"]<-"SITEVISITID" #Change column name
 
 cols<-c("SITEVISITID", "DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR01","DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR03",
         "DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR05","DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10","DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10YR01",
@@ -125,6 +115,22 @@ is.nan.data.frame <- function(x)
   do.call(cbind, lapply(x, is.nan))
 
 sm_env[is.nan(sm_env)] <- NA
+
+
+
+# #BENTHIC COVER PREP -----------------------------------------------------
+cover1$REGION<-Convert_Region(cover1)
+cover3$REGION<-Convert_Region(cover3)
+
+cover1<-mutate_if(cover1, 
+                  is.character, 
+                  str_replace_all, pattern = " ", replacement = "_")
+
+cover3<-mutate_if(cover3, 
+                  is.character, 
+                  str_replace_all, pattern = " ", replacement = "_")
+
+
 
 #Combine Tier 1 and 3 cover
 cover<-left_join(cover3,cover1[,c("SITEVISITID","CORAL","MA","TURF","SED")])  
@@ -172,6 +178,15 @@ cover_st<-cover %>%
 #remove NAs from tsdhw
 tsdhw<-tsdhw %>% filter(!is.na(YearSinceDHW4))
 
+
+# FISH PREP ---------------------------------------------------------------
+fish.new<-fish %>% filter(N >=3) #Drop strata with less than 3 sites
+
+# fish.new$Herbmean_SE<-ifelse(fish.new$HerbivoreBio==fish.new$H_SE,"Y","N")
+# fish.new$Cormean_SE<-ifelse(fish.new$CorallivoreBio==fish.new$Cor_SE,"Y","N")
+
+fish.new<-fish.new %>% select(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN,CorallivoreBio,HerbivoreBio)
+
 # Combine juvenile and predictor data at site-level -----------------------
 
 cover_forsite<-cover %>% select(SITE,CORAL,CCA,SAND_RUB,TURF,EMA_MA)
@@ -181,7 +196,8 @@ all_pred_site<- jwd_site   %>%
   left_join(cover_forsite) %>%
   left_join(tsdhw) %>%
   left_join(sm_env) %>%
-  left_join(wave)
+  left_join(wave) %>%
+  left_join(fish.new)
 
 
 nrow(jwd_site)
