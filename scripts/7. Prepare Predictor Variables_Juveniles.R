@@ -181,6 +181,7 @@ tsdhw<-tsdhw %>% filter(!is.na(YearSinceDHW4))
 
 # FISH PREP ---------------------------------------------------------------
 fish.new<-fish %>% filter(N >=3) #Drop strata with less than 3 sites
+test<-fish %>% filter(N < 3) #Drop strata with less than 3 sites
 
 # fish.new$Herbmean_SE<-ifelse(fish.new$HerbivoreBio==fish.new$H_SE,"Y","N")
 # fish.new$Cormean_SE<-ifelse(fish.new$CorallivoreBio==fish.new$Cor_SE,"Y","N")

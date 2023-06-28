@@ -441,46 +441,6 @@ ggplot(newdata, aes(x = scaled_CoralSec_A, y = Predicted_Juv)) +
   xlab("% sector Coral Cover")+ 
   scale_x_continuous(labels=mylabels,breaks=mybreaks)
 
-#Remove FFS
-no.ffs<-subset(final.df,ISLAND!="French_Frigate")
-des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=no.ffs)
-
-
-
-d<-svyglm(JuvColCount ~  
-            scaled_CoralSec_A,
-          design=des, family="poisson",offset=log(TRANSECTAREA_j))
-
-
-#Plotting 
-df.d<-no.ffs
-df.d$scaled_CoralSec_A<- seq(min(no.ffs$scaled_CoralSec_A),max(no.ffs$scaled_CoralSec_A),
-                             by=round(rg(no.ffs$scaled_CoralSec_A),4)/nrow(no.ffs))
-
-
-p <- predict(d, newdata = df.d, type = "response",se.fit=TRUE)
-p<-as.data.frame(p)
-colnames(p)<-c("Predicted_Juv","SE_Juv")
-newdata<-cbind(df.d,p)
-newdata$Predict.lwr <- newdata$Predicted_Juv - 1.96 * newdata$SE_Juv # confidence interval upper bound
-newdata$Predict.upr <- newdata$Predicted_Juv + 1.96 * newdata$SE_Juv # confidence interval lower bound
-head(newdata)
-
-
-att <- attributes(scale(no.ffs$CoralSec_A))
-mylabels <- seq(1800,195000000,50000000)
-mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
-
-#Plot
-ggplot(newdata, aes(x = scaled_CoralSec_A, y = Predicted_Juv)) +
-  geom_line() +
-  geom_ribbon(data = newdata,
-              aes(ymin = Predict.lwr, ymax = Predict.upr),
-              alpha = 0.1)+
-  ylab("Predicted Juvenile Abudance") +
-  xlab("% sector Coral Cover")+ 
-  scale_x_continuous(labels=mylabels,breaks=mybreaks)
-
 
 #Tested other variables- no polynomial relationships
 drop.hi<-subset(final.df,HerbivoreBio <90)
@@ -523,15 +483,17 @@ ggplot(newdata, aes(x = scaled_HerbivoreBio, y = Predicted_Juv)) +
   scale_x_continuous(labels=mylabels,breaks=mybreaks)
 
 
-##### MANUSCRIPT- Model selection no chla x dhw interactions, but dhw x benthic interactions ####
+##### Model Selection ####
+#Remove French Frigate Shoals to test whether sector coral cover area is retained in best fit model.
+#Note- analyses reveal that sector-level coral cover x area is still signficant even after removing FFS which has anolomously high coral cover area.
+#Backwards model selection order is consistent with model including FFS.
+# no.ffs<-subset(final.df,ISLAND != "French Frigate")
+# no.ffs$Strat_conc<-paste(no.ffs$OBS_YEAR, no.ffs$REGION,no.ffs$ISLAND,no.ffs$STRATANAME,sep = "_")
+# des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=no.ffs)
+
 final.df$Strat_conc<-paste(final.df$OBS_YEAR, final.df$REGION,final.df$ISLAND,final.df$STRATANAME,sep = "_")
 
 des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=final.df)
-
-
-# regional.mod<-svyglm(JuvColCount ~ REGION,design=des, family="poisson",offset=log(TRANSECTAREA_j)) #also tried quasipoisson -no change in model??
-# cor(regional.mod$y, fitted(regional.mod))^2
-
 
 #Global model - INCLUDING HERBIVORES
 global.mod1<-svyglm(JuvColCount ~
@@ -614,6 +576,54 @@ summary(best.mod)
 
 #Caculate McFadden's R2
 summ(best.mod) #jtools
+
+
+psrsq<-function(object, method=c("Cox-Snell","Nagelkerke"),...){
+  UseMethod("psrsq",object)
+}
+
+psrsq.glm<-function(object, method=c("Cox-Snell","Nagelkerke"),...){
+  nullmodel<-update(object,.~1)
+  method<-match.arg(method)
+  ell0<-as.vector(logLik(nullmodel))
+  ell1<-as.vector(logLik(object))
+  n<-object$df.null+1
+  
+  mutualinf<-  -2*(ell1-ell0)/n
+  r2cs<-1-exp(mutualinf)
+  if (method == "Cox-Snell") 
+    return(r2cs)
+  scaling<-1-exp(2*ell0/n)
+  r2cs/scaling
+}
+
+psrsq.svyglm<-function(object, method=c("Cox-Snell", "Nagelkerke"),...){
+  method<-match.arg(method)
+  if (!(object$family$family %in% c("binomial","quasibinomial","poisson","quasipoisson")))
+    stop("Only implemented for discrete data")
+  w<-weights(object$survey.design,"sampling")
+  N<-sum(w)
+  n<-sum(object$prior.weights)
+  minus2ell0<-object$null.deviance*(N/n)
+  minus2ell1<-object$deviance*(N/n)
+  mutualinf<-(minus2ell1-minus2ell0)/N
+  r2cs<-1-exp(mutualinf)
+  if (method =="Cox-Snell") 
+    return(r2cs)
+  if (any(w<1)) warning("Weights appear to be scaled: rsquared may be wrong")
+  scaling<-1-exp(-minus2ell0/N)
+  r2cs/scaling
+}
+
+
+
+psrsq.svyglm(best.mod,method= "Nagelkerke")
+psrsq(best.mod,method= "Nagelkerke")
+
+
+
+
+
 
 
 #Model diagnostics
@@ -983,6 +993,7 @@ newdata1$scaled_CORAL <- mean(r$scaled_CORAL)
 newdata1$scaled_CoralSec_A <- mean(r$scaled_CoralSec_A)
 newdata1$scaled_SAND_RUB <- mean(r$scaled_SAND_RUB)
 newdata1$scaled_EMA_MA <- mean(r$scaled_EMA_MA)
+newdata1$scaled_HerbivoreBio <- mean(r$scaled_HerbivoreBio)
 newdata1$scaled_WavePower <- mean(r$scaled_WavePower)
 newdata1$scaled_Depth_Median<- mean(r$scaled_Depth_Median)
 newdata1$scaled_logHumanDen <- mean(r$scaled_logHumanDen)
@@ -998,6 +1009,7 @@ newdata2$scaled_CORAL <- mean(m$scaled_CORAL)
 newdata2$scaled_CoralSec_A <- mean(m$scaled_CoralSec_A)
 newdata2$scaled_SAND_RUB <- mean(m$scaled_SAND_RUB)
 newdata2$scaled_EMA_MA <- mean(m$scaled_EMA_MA)
+newdata2$scaled_HerbivoreBio <- mean(m$scaled_HerbivoreBio)
 newdata2$scaled_WavePower <- mean(m$scaled_WavePower)
 newdata2$scaled_Depth_Median<- mean(m$scaled_Depth_Median)
 newdata2$scaled_logHumanDen <- mean(m$scaled_logHumanDen)
@@ -1013,11 +1025,12 @@ newdata3$scaled_CORAL <- mean(o$scaled_CORAL)
 newdata3$scaled_CoralSec_A <- mean(o$scaled_CoralSec_A)
 newdata3$scaled_SAND_RUB <- mean(o$scaled_SAND_RUB)
 newdata3$scaled_EMA_MA <- mean(o$scaled_EMA_MA)
+newdata3$scaled_HerbivoreBio <- mean(o$scaled_HerbivoreBio)
 newdata3$scaled_WavePower <- mean(o$scaled_WavePower)
 newdata3$scaled_Depth_Median<- mean(o$scaled_Depth_Median)
 newdata3$scaled_logHumanDen <- mean(o$scaled_logHumanDen)
 newdata3$scaled_MeanDHW10<-seq(min(o$scaled_MeanDHW10),max(o$scaled_MeanDHW10),
-                               by=round(rg(o$scaled_MeanDHW10),4)/nrow(o))
+                               by=round(rg(o$scaled_MeanDHW10),5)/nrow(o))
 newdata3$scaled_YearSinceDHW4<-mean(o$scaled_YearSinceDHW4)
 
 
@@ -1099,6 +1112,7 @@ newdata1$scaled_CORAL <- mean(l$scaled_CORAL)
 newdata1$scaled_CoralSec_A <- mean(l$scaled_CoralSec_A)
 newdata1$scaled_SAND_RUB <- mean(l$scaled_SAND_RUB)
 newdata1$scaled_EMA_MA <- mean(l$scaled_EMA_MA)
+newdata1$scaled_HerbivoreBio <- mean(l$scaled_HerbivoreBio)
 newdata1$scaled_Depth_Median<- mean(l$scaled_Depth_Median)
 newdata1$scaled_logHumanDen <- mean(l$scaled_logHumanDen)
 newdata1$scaled_WavePower <- seq(min(l$scaled_WavePower),max(l$scaled_WavePower),
@@ -1115,10 +1129,11 @@ newdata2$scaled_CORAL <- mean(h$scaled_CORAL)
 newdata2$scaled_CoralSec_A <- mean(h$scaled_CoralSec_A)
 newdata2$scaled_SAND_RUB <- mean(h$scaled_SAND_RUB)
 newdata2$scaled_EMA_MA <- mean(h$scaled_EMA_MA)
+newdata2$scaled_HerbivoreBio <- mean(h$scaled_HerbivoreBio)
 newdata2$scaled_Depth_Median<- mean(h$scaled_Depth_Median)
 newdata2$scaled_logHumanDen <- mean(h$scaled_logHumanDen)
 newdata2$scaled_WavePower <- seq(min(h$scaled_WavePower),max(h$scaled_WavePower),
-                                by=round(rg(h$scaled_WavePower),5)/nrow(h))
+                                by=round(rg(h$scaled_WavePower),6)/nrow(h))
 newdata2$scaled_MeanDHW10<-mean(h$scaled_MeanDHW10)
 newdata2$scaled_YearSinceDHW4<-mean(h$scaled_YearSinceDHW4)
 
@@ -1157,7 +1172,7 @@ all.newdata$HSsev_cat <- factor(all.newdata$HSsev_cat, levels = c("low","high"))
 all.newdata<- all.newdata[order(all.newdata$HSsev_cat),];head(all.newdata)
 
 #Plot
-plot2<-ggplot() +
+plot3<-ggplot() +
   geom_line(data=all.newdata,aes(x = scaled_WavePower, y = Predicted_Juv,color=HSsev_cat),size=1) +
   geom_ribbon(data = all.newdata,aes(x = scaled_WavePower,ymin = Predict.lwr, ymax = Predict.upr,fill=HSsev_cat),alpha = 0.1)+
   theme_bw() +
@@ -1179,7 +1194,7 @@ plot2<-ggplot() +
   scale_y_continuous(limits=c(0,20))+
   geom_rug(data=final.df,mapping=aes(x=scaled_WavePower,y=0))
 
-plot2
+plot3
 
 
 #### Sector-level Cover x Heat stress- 
@@ -1192,6 +1207,7 @@ newdata1$scaled_CoralSec_A <-seq(min(l$scaled_CoralSec_A),max(l$scaled_CoralSec_
                                  by=round(rg(l$scaled_CoralSec_A),4)/nrow(l))
 newdata1$scaled_SAND_RUB <- mean(l$scaled_SAND_RUB)
 newdata1$scaled_EMA_MA <- mean(l$scaled_EMA_MA)
+newdata1$scaled_HerbivoreBio <- mean(l$scaled_HerbivoreBio)
 newdata1$scaled_Depth_Median<- mean(l$scaled_Depth_Median)
 newdata1$scaled_logHumanDen <- mean(l$scaled_logHumanDen)
 newdata1$scaled_WavePower <- mean(l$scaled_WavePower)
@@ -1208,6 +1224,7 @@ newdata2$scaled_CoralSec_A <- seq(min(h$scaled_CoralSec_A),max(h$scaled_CoralSec
                                   by=round(rg(h$scaled_CoralSec_A),5)/nrow(h))
 newdata2$scaled_SAND_RUB <- mean(h$scaled_SAND_RUB)
 newdata2$scaled_EMA_MA <- mean(h$scaled_EMA_MA)
+newdata2$scaled_HerbivoreBio <- mean(h$scaled_HerbivoreBio)
 newdata2$scaled_Depth_Median<- mean(h$scaled_Depth_Median)
 newdata2$scaled_logHumanDen <- mean(h$scaled_logHumanDen)
 newdata2$scaled_WavePower <- mean(h$scaled_WavePower)
@@ -1249,7 +1266,7 @@ all.newdata$HSsev_cat <- factor(all.newdata$HSsev_cat, levels = c("low","high"))
 all.newdata<- all.newdata[order(all.newdata$HSsev_cat),];head(all.newdata)
 
 #Plot
-plot3<-ggplot() +
+plot2<-ggplot() +
   geom_line(data=all.newdata,aes(x = scaled_CoralSec_A, y = Predicted_Juv,color=HSsev_cat),size=1) +
   geom_ribbon(data = all.newdata,aes(x = scaled_CoralSec_A,ymin = Predict.lwr, ymax = Predict.upr,fill=HSsev_cat),alpha = 0.1)+
   theme_bw() +
@@ -1271,7 +1288,7 @@ plot3<-ggplot() +
   scale_y_continuous(limits=c(-1,85))+
   geom_rug(data=final.df,mapping=aes(x=scaled_CoralSec_A,y=0))
 
-plot3
+plot2
 
 
 # save full plot
