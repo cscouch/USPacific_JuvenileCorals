@@ -25,12 +25,6 @@ jwd$METHOD<-"DIVER"
 jwd$ANALYST<-jwd$DIVER
 jwd$SEGAREA<-jwd$SEGLENGTH*jwd$SEGWIDTH
 
-# #Round depth to nearest 4 decimal places to avoid mergings issues
-# jwd$MIN_DEPTH_M<-round(jwd$MIN_DEPTH_M, 4)
-# jwd$MAX_DEPTH_M<-round(jwd$MAX_DEPTH_M, 4)
-# jwd$LATITUDE<-round(jwd$LATITUDE,7)
-# jwd$LONGITUDE<-round(jwd$LONGITUDE,5)
-
 
 #Fix Errors in Data:
 #2 sites with incorrect Reef zone and depth bin
@@ -49,7 +43,7 @@ jwd<-jwd[!(jwd$SITE %in% c("OFU-01012","PAG-00596")),]
 jwd$MISSIONID<-as.factor(jwd$MISSIONID)
 levels(jwd$MISSIONID)
 jwd<-jwd[!jwd$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
-
+jwd<-jwd %>% filter(OBS_YEAR != "2022")
 #Exclude PRIA 2017 sites because we want similar time intervals following bleaching events for all regions
 jwd$Year_Island<-paste(jwd$OBS_YEAR,jwd$ISLAND,sep="_")
 jwd<-jwd[!jwd$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
@@ -71,10 +65,11 @@ jwd$TAXONNAME<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,NA,as.character(jwd
 nrow(subset(jwd,COLONYLENGTH>1))
 nrow(subset(jwd,COLONYLENGTH<1)) #should be 0
 
+#tmp<-ddply(jwd,.(SITE),summarize,n=length(unique(SEGMENT)))
 
 
 #Create list of sites with metadata - doesn't include depth, lat and long because there are issues with slightly different decimal places that cause issues with merging. merge in later
-SURVEY_SITE<-c("METHOD","MISSIONID","DATE_","SITEVISITID", "OBS_YEAR", "REGION", "REGION_NAME", "ISLAND","ISLANDCODE","SEC_NAME", "SITE","HABITAT_CODE","REEF_ZONE",
+SURVEY_SITE<-c("METHOD","MISSIONID","DATE_","SITEVISITID", "OBS_YEAR", "REGION", "REGION_NAME", "ISLAND","ISLANDCODE","SEC_NAME", "SITE","REEF_ZONE",
 "DEPTH_BIN")
 survey_site<-unique(jwd[,SURVEY_SITE])
 
@@ -88,9 +83,15 @@ jcd.gen<-Calc_ColDen_Transect(jwd,"GENUS_CODE"); colnames(jcd.gen)[colnames(jcd.
 jcd.gen$TRANSECT<-as.factor(jcd.gen$TRANSECT)
 
 site.data.gen<-dplyr::filter(jcd.gen,TRANSECT %in% c("1","3")) #subseting first transect (different transect numbering was used over the years 1 & 3 refer to the 1st transects- I know it doesn't make sense)
+site.data.gen<-dplyr::filter(site.data.gen,TRANSECTAREA_j >=2) #only include transects with at least 2 segments surveyed
+#site.data.gen<-dplyr::filter(site.data.gen,TRANSECTAREA_j ==3) #only include transects with at least 2 segments surveyed
+#site.data.gen<-dplyr::filter(site.data.gen,TRANSECTAREA_j >=3) #only include transects with at least 2 segments surveyed
+
 summary(site.data.gen$TRANSECT)
+summary(site.data.gen$TRANSECTAREA_j)
 
 site.data.gen2<-dplyr::select(site.data.gen, -c(TRANSECT)) #Create a copy (it takes a while to run the transect function above)
+
 
 # Merge Site level data with sectors file and export site data ------------
 sectors<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SectorArea_Juveniles.csv", stringsAsFactors=FALSE)
@@ -102,6 +103,7 @@ nrow(meta)
 nrow(subset(site.data.gen2,GENUS_CODE=="SSSS")) #1611 sites
 
 head(survey_site)
+
 
 
 #Merge site level data and metadata
@@ -185,7 +187,17 @@ site.swS %>%
   group_by(SITE) %>% 
   filter(n()>1)
 
-#We have 1405 sites for spatial and correlative analysis
+nrow(site.swS)
+
+#We have 1387 sites for spatial and correlative analysis
+#Calculate % of sites that have <3 seg, 3, and 4 segments
+head(site.swS)
+
+nseg<-ddply(site.swS,.(TRANSECTAREA_j),
+            summarize,
+            n=length(TRANSECTAREA_j),
+            prop=(n/1387)*100) 
+
 
 #Merge Lat and Long and depths back in
 survey_master<-read.csv("C:/Users/courtney.s.couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv")
@@ -199,7 +211,9 @@ colnames(survey_master)[colnames(survey_master)=="new_MAX_DEPTH_M"]<-"MAX_DEPTH_
 
 #merge colony data and survey master
 site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","LONGITUDE","MIN_DEPTH_M","MAX_DEPTH_M")])
-View(site.swS)
+#View(site.swS)
+
+
 
 #Save site-level data
 write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv",row.names = F)
@@ -224,10 +238,10 @@ isl.drop<-c("Maui","Niihau","Kure","French Frigate","Midway","Pearl & Hermes","L
 data.temporal<-data.gen_temp[!data.gen_temp$ISLAND %in% c(isl.drop),] #Remove islands that don't have enough strata sampled across the years 
 length(unique(data.temporal$SITE))
 
-#We have 1010 sites for the temporal analysis- note,only strata that were surveyed in years were include, BUT not all possible strata for a given sector are included. E.g.
+#We have 999 sites for the temporal analysis- note,only strata that were surveyed in years were include, BUT not all possible strata for a given sector are included. E.g.
 #we may be missing the shallow stratum because it was only sampled in one year. Care should be taken when comparing temporal patterns between islands
 
-write.csv(data.temporal,file="T:/Benthic/Projects/Juvenile Project/JuvDen_Temporal.csv",row.names = FALSE)
+#write.csv(data.temporal,file="T:/Benthic/Projects/Juvenile Project/JuvDen_Temporal.csv",row.names = FALSE)
 
 
 
@@ -242,6 +256,7 @@ des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=data.temporal)
 
 #Calculate regional mean and SE
 temp_Rmean<-svyby(~JuvColDen,~OBS_YEAR+REGION,des,svymean)
+temp_Rmean
 
 #Test fixed effects of region and year
 modR<-svyglm(JuvColCount ~ REGION*OBS_YEAR, design=des,offset= TRANSECTAREA_j, family="poisson")
@@ -250,18 +265,7 @@ summary(modR)
 
 #Diagnostics
 
-svydfbetas(modR)
 svystdres(modR,doplot=TRUE)
-svyhat(modR,doplot = TRUE)
-library(car)
-influencePlot(modR)
-
-res <- residuals(modR, type="deviance")
-plot(log(predict(modR)), res)
-abline(h=0, lty=2)
-qqnorm(res)
-qqline(res)
-
 
 #Run separate post hoc tests for each region to test for differences between years- I don't care about comparing all possible combinations of year and region
 library(multcomp)
@@ -269,7 +273,6 @@ library(multcomp)
 mhi.des<-svydesign(id=~1, strata=~Strat_conc, weights=~sw,data=subset(data.temporal,REGION=="MHI"))
 mhi<-svyglm(JuvColCount ~ OBS_YEAR, design=mhi.des,offset= TRANSECTAREA_j, family="poisson")
 summary(glht(mhi, mcp(OBS_YEAR="Tukey"))) 
-svystdres(mhi,doplot=TRUE)
 
 wake.des<-svydesign(id=~1, strata=~Strat_conc, weights=~sw,data=subset(data.temporal,REGION=="WAKE"))
 wake<-svyglm(JuvColCount ~ OBS_YEAR, design=wake.des,offset= TRANSECTAREA_j, family="poisson")
@@ -297,8 +300,9 @@ summary(glht(sam, mcp(OBS_YEAR="Tukey")))
 
 
 #Calculate adjusted pvalues for multiple test corrections
-pvals<-c(0.54508,0.01609,0.00325,0.366,0.312,0.000001,0.176,0.000041,0.305)
-round(p.adjust(pvals, "BH"), 3) #0.568 0.082 0.010 0.447 0.447 0.000 0.447 0.001 0.568
+pvals<-c(0.46177,0.02058,0.00191,0.352,0.113,0.000001,0.195,0.000352,0.435)
+
+round(p.adjust(pvals, "BH"), 3) #0.462 0.046 0.0006 0.453 0.203 0.000 0.292 0.002 0.462
 
 
 # PLOTTING Figure 2 ----------------------------------------------------------------
@@ -331,27 +335,24 @@ p8 <- ggplot(temp_Rmean, aes(x=OBS_YEAR, y=JuvColDen,fill=REGION)) +
         axis.text.x = element_text(angle = 90,size=14, face = "bold"),
         axis.title.y = element_text(size = 14, face = "bold")) +
   scale_fill_manual(values = c("#D55E00","#E69F00","#F0E442","#009E73","#56B4E9","#0072B2","#999999")) +
-  labs(x="",y=expression(paste("Mean Juvenile Colonies ",m^-2)))+
+  labs(x="",y=expression(paste("Mean Juvenile Colonies  ",m^-2)))+
   scale_y_continuous(expand = c(0,0), limits = c(0,16)) +
   geom_text(aes(x=OBS_YEAR,y=JuvColDen+se,label=sig, group = REGION),
             position = position_dodge(),
             vjust = -0.5) 
 p8
 
-ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Figure2.jpg",width=10,height=5)
+ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Figure2_v3.jpg",width=10,height=5)
 
 
 
 # Spatial Trends in Juveniles averaged across years --------------------------------------------
-
 table(site.swS$ISLAND,site.swS$DB_RZ)
 nrow(site.swS) #total number of sites used in the spatial analysis
 
 #Use survey package to calculate mean SE and conduct statistical analyses
 site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
 site.swS$REGION<-as.factor(site.swS$REGION)
-
-site.swS<-subset(site.swS,n>2)
 
 #Establish survey design
 site.swS$Strat_conc<-paste(site.swS$OBS_YEAR, site.swS$REGION,site.swS$ISLAND,site.swS$SEC_NAME,site.swS$DB_RZ,sep = "_")
@@ -365,15 +366,9 @@ modR<-svyglm(JuvColCount ~ REGION, design=des,offset= TRANSECTAREA_j, family="po
 summary(modR)
 tuk2<-glht(modR, mcp(REGION="Tukey")) 
 tuk.cld2 <- cld(tuk2)
-sig<-c("bd","b","a","ab","c","d","a","c")
+sig<-c("b","b","a","ab","c","d","a","c")
 
 spatial_Rmean<-cbind(spatial_Rmean,sig)
-
-
-#svystdres(modR,stvar="DB_RZ",doplot=TRUE)
-null.mod<-svyglm(JuvColCount ~ 1, design=des,offset= TRANSECTAREA_j, family="poisson")
-anova(null.mod,modR)
-
 
 #bar plot of juv by region by year with post hoc tests 
 spatial_Rmean$REGION <- factor(spatial_Rmean$REGION, levels = c("NWHI","MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
@@ -435,7 +430,7 @@ p10 <- ggplot(spatial_Imean, aes(x=reorder(ISLAND,-JuvColDen), y=JuvColDen,color
 p10
 
 
-ggsave(plot=p10,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/FigureS2.jpg",width=10,height=5)
+ggsave(plot=p10,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/FigureS2_v2.jpg",width=10,height=5)
 
 
 # Plot Pacific-wide Map most recent Juvenile Density -------------------------

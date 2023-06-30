@@ -4,10 +4,6 @@
 
 #Uses all forereef site-level data between 2013-2019 
 
-
-###Add 2015 and 2017 Laysan cover data before finishing script
-# 2017 sites "LAY-05112" "LAY-05120" "LAY-05131" "LAY-05142" "LAY-05157" "LAY-05177" "LAY-05178"
-
 rm(list=ls())
 
 #LOAD LIBRARY FUNCTIONS ... 
@@ -81,7 +77,7 @@ sectors<-mutate_if(sectors,
 nrow(jwd_site) #Should be 1405
 
 #Columns to keep
-jcols<-c("DATE_","SITEVISITID", "OBS_YEAR", "REGION", "ISLAND","SEC_NAME", "SITE","HABITAT_CODE","REEF_ZONE","MIN_DEPTH_M","MAX_DEPTH_M",
+jcols<-c("DATE_","SITEVISITID", "OBS_YEAR", "REGION", "ISLAND","SEC_NAME", "SITE","REEF_ZONE","MIN_DEPTH_M","MAX_DEPTH_M",
          "DEPTH_BIN","TRANSECTAREA_j","JuvColCount","JuvColDen","STRATANAME","LATITUDE", "LONGITUDE",
          "n","NH","sw","HumanDen")
 jwd_site<-jwd_site[,jcols]
@@ -181,12 +177,14 @@ tsdhw<-tsdhw %>% filter(!is.na(YearSinceDHW4))
 
 # FISH PREP ---------------------------------------------------------------
 fish.new<-fish %>% filter(N >=3) #Drop strata with less than 3 sites
-test<-fish %>% filter(N < 3) #Drop strata with less than 3 sites
+
+fish.new<-fish.new %>% select(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN,HerbivoreBio)
+
 
 # fish.new$Herbmean_SE<-ifelse(fish.new$HerbivoreBio==fish.new$H_SE,"Y","N")
 # fish.new$Cormean_SE<-ifelse(fish.new$CorallivoreBio==fish.new$Cor_SE,"Y","N")
 
-fish.new<-fish.new %>% select(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN,CorallivoreBio,HerbivoreBio)
+fish.new<-fish.new %>% select(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN,HerbivoreBio)
 
 # Combine juvenile and predictor data at site-level -----------------------
 

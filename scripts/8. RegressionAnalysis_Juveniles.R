@@ -53,11 +53,11 @@ df<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/JuvDen_Pred_SITE_AllYear
 cover_sec<-read.csv("T:/Benthic/Projects/Juvenile Project/BenthicCover_JuvenileProject_Tier1_SECTOR.csv")
 
 #remove columns
-df<-subset(df,select=c(DATE_,OBS_YEAR,REGION,ISLAND,SEC_NAME,DEPTH_BIN,REEF_ZONE,STRATANAME,HABITAT_CODE,SITE,n,NH,sw,TRANSECTAREA_j,JuvColCount,JuvColDen,
+df<-subset(df,select=c(DATE_,OBS_YEAR,REGION,ISLAND,SEC_NAME,DEPTH_BIN,REEF_ZONE,STRATANAME,SITE,n,NH,sw,TRANSECTAREA_j,JuvColCount,JuvColDen,
                        LATITUDE,LONGITUDE,Depth_Median,CORAL,CORALst,CCA,SAND_RUB,TURF,EMA_MA, YearSinceDHW4,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR01,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR03,
                        DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR05,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10,DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10YR01,
                        DHW.Np10y_Major_Degree_Heating_Weeks_CRW_Daily_YR10,mean_SST_CRW_CoralTemp_Daily_YR10,sd_SST_CRW_CoralTemp_Daily_YR10,mean_weekly_range_SST_CRW_CoralTemp_Daily_YR10,mean_biweekly_range_SST_CRW_CoralTemp_Daily_YR10,mean_Chlorophyll_A_ESA_OC_CCI_8Day_YR10,sd_Chlorophyll_A_ESA_OC_CCI_8Day_YR10,
-                       mean_annual_range_Chlorophyll_A_ESA_OC_CCI_8Day_YR10, WavePower,HumanDen,CorallivoreBio,HerbivoreBio))
+                       mean_annual_range_Chlorophyll_A_ESA_OC_CCI_8Day_YR10, WavePower,HumanDen,HerbivoreBio))
 
 #Combine site level data with sector cover data
 cover_sec$OBS_YEAR<-cover_sec$ANALYSIS_YEAR
@@ -157,11 +157,9 @@ head(subset(df,SEC_NAME=="OAH_NORTH")) #check that column was changed correctly
 View(df)
 
 #Remove strata that have no corallivore or herbivore biomass data
-df.new<-df %>% filter(!is.na(CorallivoreBio)) #dropping 95 sites with NA values
+df.new<-df %>% filter(!is.na(HerbivoreBio)) #Now 1294-dropping 93 sites with NA values
 
 table(df.new$REGION,df.new$OBS_YEAR)
-
-
 
 nrow(df.new)
 
@@ -170,16 +168,9 @@ df.new$LATITUDE<-abs(df.new$LATITUDE)
 
 
 #Rename Predictors
-colnames(df.new)[colnames(df.new)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR01"]<-"MeanDHW1"
-colnames(df.new)[colnames(df.new)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR03"]<-"MeanDHW3"
-colnames(df.new)[colnames(df.new)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR05"]<-"MeanDHW5"
-colnames(df.new)[colnames(df.new)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10YR01"]<-"MeanDHW9"
 colnames(df.new)[colnames(df.new)=="DHW.MeanMax_Degree_Heating_Weeks_CRW_Daily_YR10"]<-"MeanDHW10"
 colnames(df.new)[colnames(df.new)=="mean_SST_CRW_CoralTemp_Daily_YR10"]<-"MeanSST"
-colnames(df.new)[colnames(df.new)=="sd_Chlorophyll_A_ESA_OC_CCI_8Day_YR10"]<-"SDchla"
-colnames(df.new)[colnames(df.new)=="sd_SST_CRW_CoralTemp_Daily_YR10"]<-"SDsst"
 colnames(df.new)[colnames(df.new)=="mean_Chlorophyll_A_ESA_OC_CCI_8Day_YR10"]<-"Meanchla"
-colnames(df.new)[colnames(df.new)=="DHW.Np10y_Major_Degree_Heating_Weeks_CRW_Daily_YR10"]<-"DHW_Freq"
 colnames(df.new)[colnames(df.new)=="mean_biweekly_range_SST_CRW_CoralTemp_Daily_YR10"]<-"SST_Range"
 
 hist(log10(df.new$HumanDen+0.5))
@@ -188,8 +179,8 @@ df.new$logHumanDen<-log10(df.new$HumanDen+0.5)
 
 #Extract predictors and merge with new survey weights dataset
 pcols<-c("SITE","CORAL","CoralSec_A","CORALst","CCA","TURF","EMA_MA","SAND_RUB","Depth_Median","LATITUDE",
-         "MeanDHW3","MeanDHW5","MeanDHW9","MeanDHW10","DHW_Freq","Meanchla","SST_Range","SDsst","SDchla",
-         "MeanSST","WavePower","YearSinceDHW4","logHumanDen","CorallivoreBio","HerbivoreBio")
+         "MeanDHW10","Meanchla","SST_Range",
+         "MeanSST","WavePower","YearSinceDHW4","logHumanDen","HerbivoreBio")
 
 p<-df.new[,pcols]
 
@@ -198,9 +189,9 @@ rcols<-c("OBS_YEAR","REGION","SITE","TRANSECTAREA_j","JuvColCount","n","NH","sw"
 
 r<-df.new[,rcols]
 
-nrow(r) #should be 1310
+nrow(r) #should be 1294
 r<-left_join(r,p)
-nrow(r);View(r) #should be 1310
+nrow(r);View(r) #should be 1294
 
 
 #Testing for Multicolinarity
@@ -221,22 +212,13 @@ dev.off()
 #Confirmed with VIF - a priori cut off 3, but all less than 2.
 fit1 <- lm(JuvColDen ~ CORAL + CoralSec_A +  CCA +  EMA_MA + SAND_RUB + Depth_Median +  
              MeanDHW10 + Meanchla + MeanSST +
-             WavePower + YearSinceDHW4 + logHumanDen +HerbivoreBio + CorallivoreBio, data = df.new)
+             WavePower + YearSinceDHW4 + logHumanDen +HerbivoreBio, data = df.new)
 
 car::vif(fit1)
 
 #Turf and CCA correlated, latitude and Mean SST correlated, MeanMaxDHW and SST Range correlated
 #Dropping turf, latitutde, and SST range
 
-ggplot() + 
-  geom_point(data=df.new, aes(x = LATITUDE, y = MeanDHW10,color=REGION)) + 
-  theme_bw()
-
-ggplot() + 
-  geom_point(data=df.new, aes(x = LATITUDE, y = Meanchla,color=REGION)) + 
-  theme_bw()
-
-#Dropping turf, MaxMaxDHW03,SST range,year since event
 preds <- scale(preds, center = T, scale = T);colnames(preds)<-paste("scaled",colnames(preds),sep="_")
 
 final.df<-cbind(df.new,preds)
@@ -259,15 +241,6 @@ plot(final.df$JuvColDen~final.df$scaled_SAND_RUB)
 plot(final.df$JuvColDen~final.df$YearSinceDHW4)
 plot(final.df$JuvColDen~final.df$scaled_SST_Range)
 plot(final.df$JuvColDen~final.df$scaled_HerbivoreBio)
-plot(final.df$JuvColDen~final.df$scaled_CorallivoreBio)
-plot(final.df$JuvColDen~log(final.df$scaled_HerbivoreBio))
-plot(final.df$JuvColDen~log(final.df$scaled_CorallivoreBio))
-
-plot(final.df$LATITUDE~final.df$DHW_Freq)
-
-summary(lm(final.df$LATITUDE~final.df$DHW_Freq))
-
-
 
 par(mfrow=c(1,1))
 plot(final.df$JuvColDen~final.df$YearSinceDHW4)
@@ -279,14 +252,6 @@ head(final.df)
 #There are sites that never experienced a DHW 4 heating event = NA. Set these NAs to max of climatolgoical time series = 32 years
 final.df$YearSinceDHW4<-ifelse(is.na(final.df$YearSinceDHW4),32,final.df$YearSinceDHW4)
 
-
-#There are 4 2016 FFS sites that are >40 juvs/m2 (outliers). I tested removing these 4 sites to determine whether the relationship between
-#juveniles and sector-level cover data holds- it does not. I keep them in the analysis for now and explain this in the results and discussion.
-
-#drop.site<-c("FFS-01314","FFS-01288","FFS-01328","FFS-01272")
-#final.df<-final.df %>% filter(!SITE %in% drop.site)
-
-#write.csv(final.df,file="T:/Benthic/Projects/Juvenile Project/Data/test.final.df.csv")
 
 # #Backwards Model selection with Wald Tests (similar to LRTs) ------------
 data.cols<-c("OBS_YEAR","REGION","ISLAND","SEC_NAME","STRATANAME","SITE","TRANSECTAREA_j","JuvColCount","n","NH","sw","SITE","CORAL","CoralSec_A","CCA","EMA_MA","SAND_RUB","Depth_Median",
@@ -323,37 +288,7 @@ anova(d_poly3,d_poly2)
 AIC(d_poly3)
 AIC(d_poly2)
 AIC(d)
-
-#Plotting 2nd order poly
-df.d<-final.df
-df.d$scaled_Depth_Median<- seq(min(final.df$scaled_Depth_Median),max(final.df$scaled_Depth_Median),
-                                  by=round(rg(final.df$scaled_Depth_Median),4)/nrow(final.df))
-
-
-p <- predict(d_poly2, newdata = df.d, type = "response",se.fit=TRUE)
-p<-as.data.frame(p)
-colnames(p)<-c("Predicted_Juv","SE_Juv")
-newdata<-cbind(df.d,p)
-newdata$Predict.lwr <- newdata$Predicted_Juv - 1.96 * newdata$SE_Juv # confidence interval upper bound
-newdata$Predict.upr <- newdata$Predicted_Juv + 1.96 * newdata$SE_Juv # confidence interval lower bound
-head(newdata)
-
-
-att <- attributes(scale(final.df$Depth_Median))
-mylabels <- seq(0,30,3)
-mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
-
-#Plot
-ggplot(newdata, aes(x = scaled_Depth_Median, y = Predicted_Juv)) +
-  geom_line() +
-  geom_ribbon(data = newdata,
-              aes(ymin = Predict.lwr, ymax = Predict.upr),
-              alpha = 0.1)+
-  ylab("Predicted Juvenile Abudance") +
-  xlab("Median Depth (m)")+ 
-  ggtitle("Depth with 2nd order Polynomial")+
-    scale_x_continuous(labels=mylabels,breaks=mybreaks)
-
+#2nd order polynomial is best fit
 
 #Testing polynomial relationships with site-level CORAL COVER
 d_poly3<-svyglm(JuvColCount ~  
@@ -375,74 +310,9 @@ AIC(d_poly2)
 AIC(d)
 
 
-#Plotting 3rd order poly
-df.d<-final.df
-df.d$scaled_CORAL<- seq(min(final.df$scaled_CORAL),max(final.df$scaled_CORAL),
-                               by=round(rg(final.df$scaled_CORAL),5)/nrow(final.df))
-
-
-p <- predict(d_poly3, newdata = df.d, type = "response",se.fit=TRUE)
-p<-as.data.frame(p)
-colnames(p)<-c("Predicted_Juv","SE_Juv")
-newdata<-cbind(df.d,p)
-newdata$Predict.lwr <- newdata$Predicted_Juv - 1.96 * newdata$SE_Juv # confidence interval upper bound
-newdata$Predict.upr <- newdata$Predicted_Juv + 1.96 * newdata$SE_Juv # confidence interval lower bound
-head(newdata)
-
-
-att <- attributes(scale(final.df$CORAL))
-mylabels <- seq(0,85,10)
-mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
-
-#Plot
-ggplot(newdata, aes(x = scaled_CORAL, y = Predicted_Juv)) +
-  geom_line() +
-  geom_ribbon(data = newdata,
-              aes(ymin = Predict.lwr, ymax = Predict.upr),
-              alpha = 0.1)+
-  ylab("Predicted Juvenile Abudance") +
-  xlab("% Coral Cover")+ 
-  ggtitle("% Coral Cover with 3rd order Polynomial")+
-  scale_x_continuous(labels=mylabels,breaks=mybreaks)
-
-
-#Visualizing Sector cover with and without French Frigate Shoals
-d<-svyglm(JuvColCount ~  
-            scaled_CoralSec_A,
-          design=des, family="poisson",offset=log(TRANSECTAREA_j))
-
-
-#Plotting 
-df.d<-final.df
-df.d$scaled_CoralSec_A<- seq(min(final.df$scaled_CoralSec_A),max(final.df$scaled_CoralSec_A),
-                        by=round(rg(final.df$scaled_CoralSec_A),4)/nrow(final.df))
-
-
-p <- predict(d, newdata = df.d, type = "response",se.fit=TRUE)
-p<-as.data.frame(p)
-colnames(p)<-c("Predicted_Juv","SE_Juv")
-newdata<-cbind(df.d,p)
-newdata$Predict.lwr <- newdata$Predicted_Juv - 1.96 * newdata$SE_Juv # confidence interval upper bound
-newdata$Predict.upr <- newdata$Predicted_Juv + 1.96 * newdata$SE_Juv # confidence interval lower bound
-head(newdata)
-
-
-att <- attributes(scale(final.df$CoralSec_A))
-mylabels <- seq(1800,195000000,50000000)
-mybreaks <- scale(mylabels, att$`scaled:center`, att$`scaled:scale`)[,1]
-
-#Plot
-ggplot(newdata, aes(x = scaled_CoralSec_A, y = Predicted_Juv)) +
-  geom_line() +
-  geom_ribbon(data = newdata,
-              aes(ymin = Predict.lwr, ymax = Predict.upr),
-              alpha = 0.1)+
-  ylab("Predicted Juvenile Abudance") +
-  xlab("% sector Coral Cover")+ 
-  scale_x_continuous(labels=mylabels,breaks=mybreaks)
-
-
 #Tested other variables- no polynomial relationships
+
+#testing influence of high herbivore biomass stratum
 drop.hi<-subset(final.df,HerbivoreBio <90)
 des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=drop.hi)
 
@@ -497,7 +367,7 @@ des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=final.df)
 
 #Global model - INCLUDING HERBIVORES
 global.mod1<-svyglm(JuvColCount ~
-                      poly(scaled_CORAL,3,raw=TRUE)*scaled_MeanDHW10+ 
+                      scaled_CORAL*scaled_MeanDHW10+ 
                       scaled_CCA*poly(scaled_Depth_Median,2,raw=TRUE)+
                       scaled_CoralSec_A*scaled_MeanDHW10 +
                       scaled_EMA_MA*scaled_MeanDHW10 +
@@ -521,44 +391,44 @@ summ(global.mod1) #jtools
 
 
 #Backwards model selection
-RED.MOD1 <- update(global.mod1, .~. -scaled_MeanDHW10:scaled_SAND_RUB) #drop term
+RED.MOD1 <- update(global.mod1, .~. -scaled_MeanDHW10:scaled_EMA_MA) #drop term
 anova(global.mod1, RED.MOD1,method="Wald") #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD1)
 
 
-RED.MOD2 <- update(RED.MOD1, .~. -scaled_MeanDHW10:scaled_MeanDHW10:scaled_HerbivoreBio) #drop  term
+RED.MOD2 <- update(RED.MOD1, .~. -scaled_MeanDHW10:scaled_SAND_RUB) #drop  term
 anova(RED.MOD1, RED.MOD2) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD2)
 
-RED.MOD3 <- update(RED.MOD2, .~. -scaled_MeanDHW10:scaled_EMA_MA) #drop term
+RED.MOD3 <- update(RED.MOD2, .~. -scaled_CCA:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop term
 anova(RED.MOD2, RED.MOD3,test = "Chisq") #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD3)
 
-RED.MOD4 <- update(RED.MOD3, .~. -scaled_CCA:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop term
+RED.MOD4 <- update(RED.MOD3, .~. -scaled_MeanDHW10:scaled_HerbivoreBio) #drop term
 anova(RED.MOD3, RED.MOD4) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD4)
 
-RED.MOD5 <- update(RED.MOD4, .~. -scaled_MeanDHW10:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop term
+RED.MOD5 <- update(RED.MOD4, .~. -scaled_Meanchla) #drop term
 anova(RED.MOD4, RED.MOD5) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD5)
 
-RED.MOD6 <- update(RED.MOD5, .~. -scaled_Meanchla) #drop term
+RED.MOD6 <- update(RED.MOD5, .~. -scaled_MeanDHW10:poly(scaled_Depth_Median, 2, raw = TRUE)) #drop term
 anova(RED.MOD5, RED.MOD6) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD6)
 
-RED.MOD7 <- update(RED.MOD6, .~. -poly(scaled_CORAL, 3, raw = TRUE):scaled_MeanDHW10) #drop term
+RED.MOD7 <- update(RED.MOD6, .~. -scaled_CCA) #drop term
 anova(RED.MOD6, RED.MOD7) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD7)
 
-RED.MOD8 <- update(RED.MOD7, .~. -scaled_CCA) #drop term
+RED.MOD8 <- update(RED.MOD7, .~. -) #drop term
 anova(RED.MOD7, RED.MOD8) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD8)
 
-RED.MOD9 <- update(RED.MOD8, .~. -scaled_MeanDHW10:scaled_logHumanDen) #drop term
+RED.MOD9 <- update(RED.MOD8, .~. -scaled_CORAL:scaled_MeanDHW10) #drop term
 anova(RED.MOD8, RED.MOD9) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD9)
 
-RED.MOD10 <- update(RED.MOD9, .~. -scaled_MeanSST) #drop term
+RED.MOD10 <- update(RED.MOD9, .~. -caled_HerbivoreBio) #drop term
 anova(RED.MOD9, RED.MOD10) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD10)
 

@@ -13,7 +13,7 @@ source("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/scri
 # https://www.fisheries.noaa.gov/inport/item/36166
 
 #The 4 files were combined then read in
-load("T:/Benthic/Data/REA Coral Demography & Cover/Raw from Oracle/ALL_REA_JUVCORAL_RAW_2013-2020.rdata") 
+load("T:/Benthic/Data/REA Coral Demography & Cover/Raw from Oracle/ALL_REA_JUVCORAL_RAW_2013-2022.rdata") 
 
 x<-df
 
@@ -88,7 +88,7 @@ sapply(x,class)##Change column names to make code easier to code
 colnames(x)[colnames(x)=="TRANSECTNUM"]<-"TRANSECT" #Change column name
 
 #remove Depth and coordinates columns from juvenile dataset- some of them values are missing. Use depths and coords from the SURVEY MASTER file
-x<-subset(x,select=-c(MAXDEPTH,MINDEPTH,LATITUDE,LONGITUDE))
+x<-subset(x,select=-c(SITE_MAX_DEPTH,SITE_MIN_DEPTH,LATITUDE,LONGITUDE))
 
 # Merge Juvenile data and SITE MASTER -------------------------------------
 #The survey master file is a full list of all of the sites with 
@@ -159,6 +159,7 @@ head(subset(x,GENUS_CODE=="AAAA"))
 
 
 ##Calcuating segment and transect area and add column for transect area
+x<-subset(x,SEGMENT!=15) #remove segment 15 (only 4% of sites have a 4th segment)
 x$TRANSECTAREA<-Transectarea(x)
 summary(x$TRANSECTAREA)
 head(x)
