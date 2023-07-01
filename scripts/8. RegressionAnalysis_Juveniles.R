@@ -367,7 +367,7 @@ des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=final.df)
 
 #Global model - INCLUDING HERBIVORES
 global.mod1<-svyglm(JuvColCount ~
-                      scaled_CORAL*scaled_MeanDHW10+ 
+                      poly(scaled_CORAL,3,raw=TRUE)*scaled_MeanDHW10+ 
                       scaled_CCA*poly(scaled_Depth_Median,2,raw=TRUE)+
                       scaled_CoralSec_A*scaled_MeanDHW10 +
                       scaled_EMA_MA*scaled_MeanDHW10 +
@@ -420,80 +420,45 @@ RED.MOD7 <- update(RED.MOD6, .~. -scaled_CCA) #drop term
 anova(RED.MOD6, RED.MOD7) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD7)
 
-RED.MOD8 <- update(RED.MOD7, .~. -) #drop term
+RED.MOD8 <- update(RED.MOD7, .~. -scaled_CORAL:scaled_MeanDHW10) #drop term
 anova(RED.MOD7, RED.MOD8) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD8)
 
-RED.MOD9 <- update(RED.MOD8, .~. -scaled_CORAL:scaled_MeanDHW10) #drop term
+RED.MOD9 <- update(RED.MOD8, .~. -scaled_MeanDHW10:scaled_logHumanDen) #drop term
 anova(RED.MOD8, RED.MOD9) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD9)
 
-RED.MOD10 <- update(RED.MOD9, .~. -caled_HerbivoreBio) #drop term
+RED.MOD10 <- update(RED.MOD9, .~. -scaled_HerbivoreBio) #drop term
 anova(RED.MOD9, RED.MOD10) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD10)
 
-RED.MOD11 <- update(RED.MOD10, .~. -scaled_HerbivoreBio) #drop term
+RED.MOD11 <- update(RED.MOD10, .~. -scaled_logHumanDen) #drop term
 anova(RED.MOD10, RED.MOD11) #LRT --> move forward w/ whichever model keeps/removes term
 summary(RED.MOD11)
 
-AIC(RED.MOD9)
-AIC(RED.MOD10)
-AIC(RED.MOD11)
+RED.MOD12 <- update(RED.MOD11, .~. -scaled_MeanDHW10:scaled_WavePower) #drop term
+anova(RED.MOD11, RED.MOD12) #LRT --> move forward w/ whichever model keeps/removes term
+summary(RED.MOD12)
+
+RED.MOD13 <- update(RED.MOD12, .~. -scaled_WavePower) #drop term
+anova(RED.MOD12, RED.MOD13) #LRT --> move forward w/ whichever model keeps/removes term
+summary(RED.MOD13)
+
+RED.MOD14 <- update(RED.MOD13, .~. -scaled_EMA_MA) #drop term
+anova(RED.MOD13, RED.MOD14) #LRT --> move forward w/ whichever model keeps/removes term
+summary(RED.MOD14)
 
 
-best.mod<-RED.MOD10
+AIC(RED.MOD12)
+AIC(RED.MOD13)
+AIC(RED.MOD14)
+
+
+best.mod<-RED.MOD13
 summary(best.mod)
 
 #Caculate McFadden's R2
 summ(best.mod) #jtools
-
-
-psrsq<-function(object, method=c("Cox-Snell","Nagelkerke"),...){
-  UseMethod("psrsq",object)
-}
-
-psrsq.glm<-function(object, method=c("Cox-Snell","Nagelkerke"),...){
-  nullmodel<-update(object,.~1)
-  method<-match.arg(method)
-  ell0<-as.vector(logLik(nullmodel))
-  ell1<-as.vector(logLik(object))
-  n<-object$df.null+1
-  
-  mutualinf<-  -2*(ell1-ell0)/n
-  r2cs<-1-exp(mutualinf)
-  if (method == "Cox-Snell") 
-    return(r2cs)
-  scaling<-1-exp(2*ell0/n)
-  r2cs/scaling
-}
-
-psrsq.svyglm<-function(object, method=c("Cox-Snell", "Nagelkerke"),...){
-  method<-match.arg(method)
-  if (!(object$family$family %in% c("binomial","quasibinomial","poisson","quasipoisson")))
-    stop("Only implemented for discrete data")
-  w<-weights(object$survey.design,"sampling")
-  N<-sum(w)
-  n<-sum(object$prior.weights)
-  minus2ell0<-object$null.deviance*(N/n)
-  minus2ell1<-object$deviance*(N/n)
-  mutualinf<-(minus2ell1-minus2ell0)/N
-  r2cs<-1-exp(mutualinf)
-  if (method =="Cox-Snell") 
-    return(r2cs)
-  if (any(w<1)) warning("Weights appear to be scaled: rsquared may be wrong")
-  scaling<-1-exp(-minus2ell0/N)
-  r2cs/scaling
-}
-
-
-
-psrsq.svyglm(best.mod,method= "Nagelkerke")
-psrsq(best.mod,method= "Nagelkerke")
-
-
-
-
-
 
 
 #Model diagnostics
@@ -504,8 +469,6 @@ plot(log(predict(best.mod)), res)
 abline(h=0, lty=2)
 qqnorm(res)
 qqline(res)
-
-
 
 
 

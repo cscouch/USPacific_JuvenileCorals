@@ -14,78 +14,85 @@ citation("DHARMa")
 #https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 
 #LOAD DATA
-jwd<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/CoralBelt_Juveniles_raw_CLEANED.csv")
+jwd.orig<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/CoralBelt_Juveniles_raw_CLEANED.csv")
 
 #Tweaks before calculating Site-level data-------------------------------------------------
 #Colony fragments and scleractinans are subsetted in the functions 
 #Add a column for adult fragments so we can remove them from the dataset later (-1 indicates fragment)
-jwd$Fragment <- 0 # you need to add this column so that you can use the site level functions correctly
-jwd$DATE_ <- ymd(jwd$DATE_)
-jwd$METHOD<-"DIVER"
-jwd$ANALYST<-jwd$DIVER
-jwd$SEGAREA<-jwd$SEGLENGTH*jwd$SEGWIDTH
+jwd.orig$Fragment <- 0 # you need to add this column so that you can use the site level functions correctly
+jwd.orig$DATE_ <- ymd(jwd.orig$DATE_)
+jwd.orig$METHOD<-"DIVER"
+jwd.orig$ANALYST<-jwd.orig$DIVER
+jwd.orig$SEGAREA<-jwd.orig$SEGLENGTH*jwd.orig$SEGWIDTH
 
 
 #Fix Errors in Data:
 #2 sites with incorrect Reef zone and depth bin
-jwd$REEF_ZONE<-ifelse(jwd$SITE=="HAW-04285","Forereef",as.character(jwd$REEF_ZONE))
-jwd$DEPTH_BIN<-ifelse(jwd$SITE=="FFS-04155","Shallow",as.character(jwd$DEPTH_BIN))
+jwd.orig$REEF_ZONE<-ifelse(jwd.orig$SITE=="HAW-04285","Forereef",as.character(jwd.orig$REEF_ZONE))
+jwd.orig$DEPTH_BIN<-ifelse(jwd.orig$SITE=="FFS-04155","Shallow",as.character(jwd.orig$DEPTH_BIN))
 
 #3 Maug sites miscoded as Lagoon, should be FRF
 mau.sites<-c("MAU-00603","MAU-00539","MAU-00551")
-jwd$REEF_ZONE<-ifelse(jwd$SITE %in% mau.sites,"Forereef",as.character(jwd$REEF_ZONE))
+jwd.orig$REEF_ZONE<-ifelse(jwd.orig$SITE %in% mau.sites,"Forereef",as.character(jwd.orig$REEF_ZONE))
 
 #Remove 2 sites that weren't surveyed for juveniles
-jwd<-jwd[!(jwd$SITE %in% c("OFU-01012","PAG-00596")),]
+jwd.orig<-jwd.orig[!(jwd.orig$SITE %in% c("OFU-01012","PAG-00596")),]
 
 #Remove special missions (not NCRMP surveys)
 #Change all special missions to exclude flag =-1, right now they are 0. Then exclude these sites
-jwd$MISSIONID<-as.factor(jwd$MISSIONID)
-levels(jwd$MISSIONID)
-jwd<-jwd[!jwd$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
-jwd<-jwd %>% filter(OBS_YEAR != "2022")
+jwd.orig$MISSIONID<-as.factor(jwd.orig$MISSIONID)
+levels(jwd.orig$MISSIONID)
+jwd.orig<-jwd.orig[!jwd.orig$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
+jwd.orig<-jwd.orig %>% filter(OBS_YEAR != "2022")
 #Exclude PRIA 2017 sites because we want similar time intervals following bleaching events for all regions
-jwd$Year_Island<-paste(jwd$OBS_YEAR,jwd$ISLAND,sep="_")
-jwd<-jwd[!jwd$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
+jwd.orig$Year_Island<-paste(jwd.orig$OBS_YEAR,jwd.orig$ISLAND,sep="_")
+jwd.orig<-jwd.orig[!jwd.orig$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
 
-jwd<-droplevels(jwd);levels(jwd$MISSIONID) #special missions should be gone
-View(jwd)
+jwd.orig<-droplevels(jwd.orig);levels(jwd.orig$MISSIONID) #special missions should be gone
+View(jwd.orig)
 
 #Dealing with colonies <1cm- divers haven't recorded sub cm colonies consistently through time.
 #Change colonies that are <1cm to NA. I'm not subsetting these data because I need to keep the placeholder in the dataframe in case a site only had colonies <1cm or >5cm
-View(subset(jwd,COLONYLENGTH<1))
-nrow(subset(jwd,COLONYLENGTH<1))
-nrow(jwd)
-jwd$S_ORDER<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,NA,as.character(jwd$S_ORDER))
-jwd$GENUS_CODE<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,"AAAA",as.character(jwd$GENUS_CODE))
-jwd$TAXONCODE<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,"AAAA",as.character(jwd$TAXONCODE))
-jwd$COLONYLENGTH<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,NA,jwd$COLONYLENGTH)
-jwd$TAXONNAME<-ifelse(jwd$COLONYLENGTH<1|jwd$COLONYLENGTH==5,NA,as.character(jwd$TAXONNAME))
+View(subset(jwd.orig,COLONYLENGTH<1))
+nrow(subset(jwd.orig,COLONYLENGTH<1))
+nrow(jwd.orig)
+jwd.orig$S_ORDER<-ifelse(jwd.orig$COLONYLENGTH<1|jwd.orig$COLONYLENGTH==5,NA,as.character(jwd.orig$S_ORDER))
+jwd.orig$GENUS_CODE<-ifelse(jwd.orig$COLONYLENGTH<1|jwd.orig$COLONYLENGTH==5,"AAAA",as.character(jwd.orig$GENUS_CODE))
+jwd.orig$TAXONCODE<-ifelse(jwd.orig$COLONYLENGTH<1|jwd.orig$COLONYLENGTH==5,"AAAA",as.character(jwd.orig$TAXONCODE))
+jwd.orig$COLONYLENGTH<-ifelse(jwd.orig$COLONYLENGTH<1|jwd.orig$COLONYLENGTH==5,NA,jwd.orig$COLONYLENGTH)
+jwd.orig$TAXONNAME<-ifelse(jwd.orig$COLONYLENGTH<1|jwd.orig$COLONYLENGTH==5,NA,as.character(jwd.orig$TAXONNAME))
 
-nrow(subset(jwd,COLONYLENGTH>1))
-nrow(subset(jwd,COLONYLENGTH<1)) #should be 0
-
-#tmp<-ddply(jwd,.(SITE),summarize,n=length(unique(SEGMENT)))
+nrow(subset(jwd.orig,COLONYLENGTH>1))
+nrow(subset(jwd.orig,COLONYLENGTH<1)) #should be 0
 
 
 #Create list of sites with metadata - doesn't include depth, lat and long because there are issues with slightly different decimal places that cause issues with merging. merge in later
 SURVEY_SITE<-c("METHOD","MISSIONID","DATE_","SITEVISITID", "OBS_YEAR", "REGION", "REGION_NAME", "ISLAND","ISLANDCODE","SEC_NAME", "SITE","REEF_ZONE",
-"DEPTH_BIN")
-survey_site<-unique(jwd[,SURVEY_SITE])
+               "DEPTH_BIN")
+survey_site<-unique(jwd.orig[,SURVEY_SITE])
 
 n_occur <- data.frame(table(survey_site$SITE)) 
 n_occur[n_occur$Freq > 1,]
 
+#jwd<-subset(jwd.orig,SEGMENT==0)
+#jwd<-subset(jwd.orig,SEGMENT %in% c(0,5))
+jwd<-subset(jwd.orig,SEGMENT%in% c(0,5,10))
+
+##Calcuating segment and transect area and add column for transect area
+jwd<-subset(jwd,SEGMENT!=15) #remove segment 15 (only 4% of sites have a 4th segment)
+jwd$TRANSECTAREA<-Transectarea(jwd)
+summary(jwd$TRANSECTAREA)
+head(jwd)
+nrow(jwd)
+
 # Generate Juvenile Density at the TRANSECT & SITE-LEVEL BY GENUS--------------------------------------------------
+
 jcd.gen<-Calc_ColDen_Transect(jwd,"GENUS_CODE"); colnames(jcd.gen)[colnames(jcd.gen)=="ColCount"]<-"JuvColCount";colnames(jcd.gen)[colnames(jcd.gen)=="ColDen"]<-"JuvColDen";colnames(jcd.gen)[colnames(jcd.gen)=="TRANSECTAREA"]<-"TRANSECTAREA_j"
 
 #Drop 2nd transect since we only surveyed 1 transect after 2017 and the 2nd transect wasn't surveyed consistently prior to 2018
 jcd.gen$TRANSECT<-as.factor(jcd.gen$TRANSECT)
 
 site.data.gen<-dplyr::filter(jcd.gen,TRANSECT %in% c("1","3")) #subseting first transect (different transect numbering was used over the years 1 & 3 refer to the 1st transects- I know it doesn't make sense)
-site.data.gen<-dplyr::filter(site.data.gen,TRANSECTAREA_j >=2) #only include transects with at least 2 segments surveyed
-#site.data.gen<-dplyr::filter(site.data.gen,TRANSECTAREA_j ==3) #only include transects with at least 2 segments surveyed
-#site.data.gen<-dplyr::filter(site.data.gen,TRANSECTAREA_j >=3) #only include transects with at least 2 segments surveyed
 
 summary(site.data.gen$TRANSECT)
 summary(site.data.gen$TRANSECTAREA_j)
@@ -196,7 +203,7 @@ head(site.swS)
 nseg<-ddply(site.swS,.(TRANSECTAREA_j),
             summarize,
             n=length(TRANSECTAREA_j),
-            prop=(n/1387)*100) 
+            prop=(n/1405)*100) 
 
 
 #Merge Lat and Long and depths back in
@@ -214,6 +221,39 @@ site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","
 #View(site.swS)
 
 
+
+#Testing for variability in sampling by number of segments surveyed
+#Use survey package to calculate mean SE and conduct statistical analyses
+site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
+
+#Create contactenated Strata variable and establish survey design with survey weights
+site.swS$Strat_conc<-paste(site.swS$OBS_YEAR, site.swS$site.swS,site.swS$ISLAND,site.swS$SEC_NAME,site.swS$DB_RZ,sep = "_")
+des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=site.swS)
+
+#add column for number of segments
+#site.swS_1<-site.swS
+#site.swS_2<-site.swS
+site.swS_3<-site.swS
+
+#site.swS_1$nseg<-"1"
+#site.swS_2$nseg<-"2"
+site.swS_3$nseg<-"3"
+
+#Calculate regional mean and SE
+#seg_1<-svyby(~JuvColDen,~REGION,des,svymean);seg_1
+#seg_2<-svyby(~JuvColDen,~REGION,des,svymean);seg_2
+seg_3<-svyby(~JuvColDen,~REGION,des,svymean);seg_3
+
+seg.test<-rbind(site.swS_1,site.swS_2,site.swS_3)
+
+des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=seg.test)
+
+mod1<-svyglm(JuvColDen ~ nseg*REGION, design=des, family="poisson")
+anova(mod1)
+summary(mod1)
+
+regTermTest(mod1,~nseg)
+#density does not vary signficantly by number of segments surveyed or the interaction of nseg and region
 
 #Save site-level data
 write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv",row.names = F)

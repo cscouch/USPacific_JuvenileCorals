@@ -158,13 +158,6 @@ head(subset(x,GENUS_CODE=="UNKN"&S_ORDER=="Scleractinia"))
 head(subset(x,GENUS_CODE=="AAAA"))
 
 
-##Calcuating segment and transect area and add column for transect area
-x<-subset(x,SEGMENT!=15) #remove segment 15 (only 4% of sites have a 4th segment)
-x$TRANSECTAREA<-Transectarea(x)
-summary(x$TRANSECTAREA)
-head(x)
-nrow(x)
-
 
 ## CLEAN UP NAs ##
 NegNineCheckCols=c("S_ORDER","TAXONNAME","COLONYLENGTH")
