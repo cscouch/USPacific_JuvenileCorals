@@ -222,38 +222,38 @@ site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","
 
 
 
-#Testing for variability in sampling by number of segments surveyed
-#Use survey package to calculate mean SE and conduct statistical analyses
-site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
-
-#Create contactenated Strata variable and establish survey design with survey weights
-site.swS$Strat_conc<-paste(site.swS$OBS_YEAR, site.swS$site.swS,site.swS$ISLAND,site.swS$SEC_NAME,site.swS$DB_RZ,sep = "_")
-des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=site.swS)
-
-#add column for number of segments
-#site.swS_1<-site.swS
-#site.swS_2<-site.swS
-site.swS_3<-site.swS
-
-#site.swS_1$nseg<-"1"
-#site.swS_2$nseg<-"2"
-site.swS_3$nseg<-"3"
-
-#Calculate regional mean and SE
-#seg_1<-svyby(~JuvColDen,~REGION,des,svymean);seg_1
-#seg_2<-svyby(~JuvColDen,~REGION,des,svymean);seg_2
-seg_3<-svyby(~JuvColDen,~REGION,des,svymean);seg_3
-
-seg.test<-rbind(site.swS_1,site.swS_2,site.swS_3)
-
-des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=seg.test)
-
-mod1<-svyglm(JuvColDen ~ nseg*REGION, design=des, family="poisson")
-anova(mod1)
-summary(mod1)
-
-regTermTest(mod1,~nseg)
-#density does not vary signficantly by number of segments surveyed or the interaction of nseg and region
+# #Testing for variability in sampling by number of segments surveyed
+# #Use survey package to calculate mean SE and conduct statistical analyses
+# site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
+# 
+# #Create contactenated Strata variable and establish survey design with survey weights
+# site.swS$Strat_conc<-paste(site.swS$OBS_YEAR, site.swS$site.swS,site.swS$ISLAND,site.swS$SEC_NAME,site.swS$DB_RZ,sep = "_")
+# des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=site.swS)
+# 
+# #add column for number of segments
+# #site.swS_1<-site.swS
+# #site.swS_2<-site.swS
+# site.swS_3<-site.swS
+# 
+# #site.swS_1$nseg<-"1"
+# #site.swS_2$nseg<-"2"
+# site.swS_3$nseg<-"3"
+# 
+# #Calculate regional mean and SE
+# #seg_1<-svyby(~JuvColDen,~REGION,des,svymean);seg_1
+# #seg_2<-svyby(~JuvColDen,~REGION,des,svymean);seg_2
+# seg_3<-svyby(~JuvColDen,~REGION,des,svymean);seg_3
+# 
+# seg.test<-rbind(site.swS_1,site.swS_2,site.swS_3)
+# 
+# des<-svydesign(id=~1, strata=~ Strat_conc, weights=~sw,data=seg.test)
+# 
+# mod1<-svyglm(JuvColDen ~ nseg*REGION, design=des, family="poisson")
+# anova(mod1)
+# summary(mod1)
+# 
+# regTermTest(mod1,~nseg)
+# #density does not vary signficantly by number of segments surveyed or the interaction of nseg and region
 
 #Save site-level data
 write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv",row.names = F)
@@ -414,7 +414,6 @@ spatial_Rmean<-cbind(spatial_Rmean,sig)
 spatial_Rmean$REGION <- factor(spatial_Rmean$REGION, levels = c("NWHI","MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
 #Add Posthoc groupings from glms
 spatial_Rmean<- spatial_Rmean[order(spatial_Rmean$REGION),];spatial_Rmean
-
 
 spatialR <- ggplot(spatial_Rmean, aes(x=REGION, y=JuvColDen,fill=REGION)) +
   #geom_bar(stat = "identity", position = position_dodge2(preserve='single'), width = 1, color="black") +
