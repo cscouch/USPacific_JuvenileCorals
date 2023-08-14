@@ -9,8 +9,6 @@ rm(list=ls())
 #LOAD LIBRARY FUNCTION ...
 source("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/scripts/Functions_Juveniles.R")
 
-library(DHARMa)
-citation("DHARMa")
 #https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 
 #LOAD DATA
@@ -387,6 +385,7 @@ ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Fig
 
 
 # Spatial Trends in Juveniles averaged across years --------------------------------------------
+
 table(site.swS$ISLAND,site.swS$DB_RZ)
 nrow(site.swS) #total number of sites used in the spatial analysis
 
@@ -440,7 +439,7 @@ spatialR <- ggplot(spatial_Rmean, aes(x=REGION, y=JuvColDen,fill=REGION)) +
             vjust = -0.5,size = 5) 
 spatialR
 
-#ggsave(plot=spatialR,file="T:/Benthic/Projects/Juvenile Project/Figures/DensityRegionalSpatial.jpg",width=10,height=5)
+ggsave(plot=spatialR,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Fig1B.jpg",width=8,height=5)
 
 
 spatial_Imean<-svyby(~JuvColDen,~REGION + ISLAND,des,svymean)
@@ -503,6 +502,7 @@ theme_set(
 #Get world spatial polygons from the rnaturalearth package
 #Cut out area of world that doesn't include the Pacific and bind E and W Pacific and shift the geographical coordinates for a Pacific view (see website for illustration)
 #Note- you will get several warnings about "world is invalid" and an issues with rgeos- ignore these
+rgeos::set_RGEOS_CheckValidity(2L)
 world <- rnaturalearth::ne_countries(scale = 'medium', returnclass = "sp")
 box_cut <- bbox2SP(n = 90, s = -90, w = -150, e = 140, proj4string = world@proj4string) #you can tweak the W and E coords to zoom in and out, but adjust the N and S coords in the function below using ymin and ymax
 world_crop <- gDifference(world, box_cut)
