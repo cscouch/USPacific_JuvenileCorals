@@ -1,1 +1,1 @@
-# Juvenile_Project
+This project contains all of the data and scripts to summarize and analyze data on coral juveniles collected by the Pacific National Coral Reef Monitoring Program. These scripts were used to generate results provided in Couch et al. in press.
