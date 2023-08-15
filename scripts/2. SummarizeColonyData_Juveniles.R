@@ -1,18 +1,19 @@
-#This script summarizes juvenile data from NCRMP 2013-2019 at the site, stratum, island and sector level
-#It also identifies which sectors and strata have been surveyed in all years
-#It calculate delta density
+#This script summarizes juvenile data from NCRMP 2013-2019
+#It reads in cleaned colony-level data, completes more data prep, summarizes data to the site level,
+#and analyses temporal and spatial patterns, including plotting (Fig 1, 2 and S2)
 
 # Using R version 4.1.0 (2021-05-18)
 
 rm(list=ls())
+dir = Sys.info()[7]
+setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
 
-#LOAD LIBRARY FUNCTION ...
-source("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/scripts/Functions_Juveniles.R")
+#LOAD LIBRARY FUNCTIONS ...
+source("scripts/Functions_Juveniles.R")
 
-#https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 
 #LOAD DATA
-jwd.orig<-read.csv("T:/Benthic/Projects/Juvenile Project/Data/CoralBelt_Juveniles_raw_CLEANED.csv")
+jwd.orig<-read.csv("Data/outputs/CoralBelt_Juveniles_raw_CLEANED.csv")
 
 #Tweaks before calculating Site-level data-------------------------------------------------
 #Colony fragments and scleractinans are subsetted in the functions 
@@ -24,7 +25,7 @@ jwd.orig$ANALYST<-jwd.orig$DIVER
 jwd.orig$SEGAREA<-jwd.orig$SEGLENGTH*jwd.orig$SEGWIDTH
 
 
-#Fix Errors in Data:
+#Small Fixes
 #2 sites with incorrect Reef zone and depth bin
 jwd.orig$REEF_ZONE<-ifelse(jwd.orig$SITE=="HAW-04285","Forereef",as.character(jwd.orig$REEF_ZONE))
 jwd.orig$DEPTH_BIN<-ifelse(jwd.orig$SITE=="FFS-04155","Shallow",as.character(jwd.orig$DEPTH_BIN))
@@ -36,12 +37,11 @@ jwd.orig$REEF_ZONE<-ifelse(jwd.orig$SITE %in% mau.sites,"Forereef",as.character(
 #Remove 2 sites that weren't surveyed for juveniles
 jwd.orig<-jwd.orig[!(jwd.orig$SITE %in% c("OFU-01012","PAG-00596")),]
 
-#Remove special missions (not NCRMP surveys)
-#Change all special missions to exclude flag =-1, right now they are 0. Then exclude these sites
+#Remove special missions (not NCRMP surveys) & HA1404(NWHI 2014- not enough sampling)
 jwd.orig$MISSIONID<-as.factor(jwd.orig$MISSIONID)
 levels(jwd.orig$MISSIONID)
-jwd.orig<-jwd.orig[!jwd.orig$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","MP2006"),] 
-jwd.orig<-jwd.orig %>% filter(OBS_YEAR != "2022")
+jwd.orig<-jwd.orig[!jwd.orig$MISSIONID %in% c("MP1410","MP1512","MP1602","SE1602","HA1404"),] 
+
 #Exclude PRIA 2017 sites because we want similar time intervals following bleaching events for all regions
 jwd.orig$Year_Island<-paste(jwd.orig$OBS_YEAR,jwd.orig$ISLAND,sep="_")
 jwd.orig<-jwd.orig[!jwd.orig$Year_Island %in% c("2017_Baker","2017_Jarvis","2017_Howland"),] 
@@ -70,14 +70,14 @@ SURVEY_SITE<-c("METHOD","MISSIONID","DATE_","SITEVISITID", "OBS_YEAR", "REGION",
 survey_site<-unique(jwd.orig[,SURVEY_SITE])
 
 n_occur <- data.frame(table(survey_site$SITE)) 
-n_occur[n_occur$Freq > 1,]
+n_occur[n_occur$Freq > 1,] #make sure sites aren't duplicated
 
 #jwd<-subset(jwd.orig,SEGMENT==0)
 #jwd<-subset(jwd.orig,SEGMENT %in% c(0,5))
-jwd<-subset(jwd.orig,SEGMENT%in% c(0,5,10))
+#jwd<-subset(jwd.orig,SEGMENT%in% c(0,5,10))
 
 ##Calcuating segment and transect area and add column for transect area
-jwd<-subset(jwd,SEGMENT!=15) #remove segment 15 (only 4% of sites have a 4th segment)
+jwd<-subset(jwd.orig,SEGMENT!=15) #remove segment 15 (only 4% of sites have a 4th segment)
 jwd$TRANSECTAREA<-Transectarea(jwd)
 summary(jwd$TRANSECTAREA)
 head(jwd)
@@ -98,8 +98,8 @@ summary(site.data.gen$TRANSECTAREA_j)
 site.data.gen2<-dplyr::select(site.data.gen, -c(TRANSECT)) #Create a copy (it takes a while to run the transect function above)
 
 
-# Merge Site level data with sectors file and export site data ------------
-sectors<-read.csv("C:/Users/Courtney.S.Couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SectorArea_Juveniles.csv", stringsAsFactors=FALSE)
+# Merge Site level data with sectors file, updating sectors and reef zones (pooling)------------
+sectors<-read.csv("SupportFiles/SectorArea_Juveniles.csv", stringsAsFactors=FALSE)
 
 #Merge together survey meta data and sector area files and check for missmatches 
 meta<-left_join(survey_site,sectors)
@@ -114,7 +114,7 @@ head(survey_site)
 #Merge site level data and metadata
 site.data.gen2<-left_join(site.data.gen2,meta)
 site.data.gen2$Juvpres.abs<-ifelse(site.data.gen2$JuvColDen>0,1,0) #add presence/absense column 
-nrow(subset(site.data.gen2,GENUS_CODE=="SSSS")) #should be 1611
+nrow(subset(site.data.gen2,GENUS_CODE=="SSSS")) #should be 1580
 site.data.gen2[which(is.na(site.data.gen2$AREA_HA)),] #The NA values are from special missions and maug Lagoon that will be dropped later in the script - ok
 nrow(meta)
 
@@ -143,8 +143,6 @@ site.data.gen2<-subset(site.data.gen2,select=-c(NH)) #remove old NH column
 site.data.gen2<-site.data.gen2 %>% dplyr::rename(NH=new.NH) #rename NH
 nrow(site.data.gen2)#double check that the same number of rows are present before and after joining
 
-table(site.data.gen2$ISLAND,site.data.gen2$OBS_YEAR)
-
 
 #Change Region Names -breaking up marianas and PRIAs into subregions because of broad geography and thermal history
 site.data.gen2$REGION<-ifelse(site.data.gen2$ISLAND %in% c("Maug", "Asuncion", "Alamagan", "Pagan", "Agrihan", "Guguan", "Sarigan","Farallon de Pajaros")
@@ -162,13 +160,11 @@ site.data.gen2$STRATANAME<- paste(site.data.gen2$SEC_NAME,site.data.gen2$REEF_ZO
 site.data.gen2$REGION_YEAR<-paste(site.data.gen2$REGION,site.data.gen2$OBS_YEAR,sep="_")
 site.data.gen2$DB_RZ<- paste(site.data.gen2$REEF_ZONE,site.data.gen2$DEPTH_BIN,sep="_")
 
-#Remove the 2014 NWHI data - we have very low sampling in 2014 & we do not have benthic cover data for 2014 
-site.data.gen2<-site.data.gen2[site.data.gen2$REGION_YEAR !="NWHI_2014",]
-
-length(unique(site.data.gen2$SITE))
+length(unique(site.data.gen2$SITE)) #should be 1468
 
 
-#Calculate survey weights (inverse proportion weighting)
+# Calculate survey weights (inverse proportion weighting) -----------------
+
 w.df<-ddply(site.data.gen2,.(OBS_YEAR,SEC_NAME,REEF_ZONE,DEPTH_BIN,NH),
             summarize,
             n=length(unique(SITE))) #quantify # of sites/stratum
@@ -192,9 +188,9 @@ site.swS %>%
   group_by(SITE) %>% 
   filter(n()>1)
 
-nrow(site.swS)
+nrow(site.swS) #We have 1405 sites for spatial and correlative analysis
 
-#We have 1387 sites for spatial and correlative analysis
+
 #Calculate % of sites that have <3 seg, 3, and 4 segments
 head(site.swS)
 
@@ -205,12 +201,11 @@ nseg<-ddply(site.swS,.(TRANSECTAREA_j),
 
 
 #Merge Lat and Long and depths back in
-survey_master<-read.csv("C:/Users/courtney.s.couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv")
+survey_master<-read.csv("SupportFiles/SURVEY MASTER_Juveniles.csv")
 
-#Use SM coordinates-some coordinates are wrong in data and need to be updated
-colnames(survey_master)[colnames(survey_master)=="LATITUDE_LOV"]<-"LATITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
-colnames(survey_master)[colnames(survey_master)=="LONGITUDE_LOV"]<-"LONGITUDE" #Change column name- we will eventually change this column back to "taxoncode" after we modify the spcode names to match the taxalist we all feel comfortable identifying
-
+#Use SM coordinates and depth
+colnames(survey_master)[colnames(survey_master)=="LATITUDE_LOV"]<-"LATITUDE" 
+colnames(survey_master)[colnames(survey_master)=="LONGITUDE_LOV"]<-"LONGITUDE"
 colnames(survey_master)[colnames(survey_master)=="new_MIN_DEPTH_M"]<-"MIN_DEPTH_M" #Change column name
 colnames(survey_master)[colnames(survey_master)=="new_MAX_DEPTH_M"]<-"MAX_DEPTH_M" #Change column name
 
@@ -218,7 +213,7 @@ colnames(survey_master)[colnames(survey_master)=="new_MAX_DEPTH_M"]<-"MAX_DEPTH_
 site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","LONGITUDE","MIN_DEPTH_M","MAX_DEPTH_M")])
 #View(site.swS)
 
-
+nrow(site.swS)
 
 # #Testing for variability in sampling by number of segments surveyed
 # #Use survey package to calculate mean SE and conduct statistical analyses
@@ -254,10 +249,11 @@ site.swS<-left_join(site.swS, survey_master[,c("SITEVISITID","SITE","LATITUDE","
 # #density does not vary signficantly by number of segments surveyed or the interaction of nseg and region
 
 #Save site-level data
-write.csv(site.swS,file="T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv",row.names = F)
+write.csv(site.swS,file="Data/outputs/JuvProject_SITE_weights_AllYears.csv",row.names = F)
 
 
-# GENERATE DATA FOR TEMPORAL ANALYSIS ---------------------------------------------------
+# TEMPORAL PATTERNS -Prep---------------------------------------------------
+#Data Prep
 site.swS$STRATANAME<- paste(site.swS$SEC_NAME,site.swS$REEF_ZONE,site.swS$DEPTH_BIN,sep="_") #create strata column
 st.list<-ddply(site.swS,.(OBS_YEAR,REGION,ISLAND,SEC_NAME,STRATANAME),summarize,n=length(unique(SITE)))#number of sites/stratum
 
@@ -276,14 +272,14 @@ isl.drop<-c("Maui","Niihau","Kure","French Frigate","Midway","Pearl & Hermes","L
 data.temporal<-data.gen_temp[!data.gen_temp$ISLAND %in% c(isl.drop),] #Remove islands that don't have enough strata sampled across the years 
 length(unique(data.temporal$SITE))
 
-#We have 999 sites for the temporal analysis- note,only strata that were surveyed in years were include, BUT not all possible strata for a given sector are included. E.g.
+#We have 1010 sites for the temporal analysis- note,only strata that were surveyed in years were include, BUT not all possible strata for a given sector are included. E.g.
 #we may be missing the shallow stratum because it was only sampled in one year. Care should be taken when comparing temporal patterns between islands
 
-#write.csv(data.temporal,file="T:/Benthic/Projects/Juvenile Project/JuvDen_Temporal.csv",row.names = FALSE)
+#write.csv(data.temporal,file="Data/outputs/JuvDen_Temporal.csv",row.names = FALSE)
 
 
 
-# TEMPORAL Patterns in Juveniles- Analysis and Plots --------------------------------------------
+# TEMPORAL PATTERNS -Analysis and Plots---------------------------------------------------
 
 #Use survey package to calculate mean SE and conduct statistical analyses
 data.temporal$OBS_YEAR<-as.factor(data.temporal$OBS_YEAR)
@@ -298,15 +294,14 @@ temp_Rmean
 
 #Test fixed effects of region and year
 modR<-svyglm(JuvColCount ~ REGION*OBS_YEAR, design=des,offset= TRANSECTAREA_j, family="poisson")
-anova(modR)
 summary(modR)
+regTermTest(modR,~OBS_YEAR:REGION)
 
 #Diagnostics
 
 svystdres(modR,doplot=TRUE)
 
 #Run separate post hoc tests for each region to test for differences between years- I don't care about comparing all possible combinations of year and region
-library(multcomp)
 
 mhi.des<-svydesign(id=~1, strata=~Strat_conc, weights=~sw,data=subset(data.temporal,REGION=="MHI"))
 mhi<-svyglm(JuvColCount ~ OBS_YEAR, design=mhi.des,offset= TRANSECTAREA_j, family="poisson")
@@ -338,9 +333,9 @@ summary(glht(sam, mcp(OBS_YEAR="Tukey")))
 
 
 #Calculate adjusted pvalues for multiple test corrections
-pvals<-c(0.46177,0.02058,0.00191,0.352,0.113,0.000001,0.195,0.000352,0.435)
+pvals<-c(0.46332,0.02060,0.00181,0.307,0.113,0.000003,0.168,0.000461,0.417)
 
-round(p.adjust(pvals, "BH"), 3) #0.462 0.046 0.0006 0.453 0.203 0.000 0.292 0.002 0.462
+round(p.adjust(pvals, "BH"), 3) #0.463 0.046 0.005 0.395 0.203 0.000 0.252 0.002 0.463
 
 
 # PLOTTING Figure 2 ----------------------------------------------------------------
@@ -350,7 +345,7 @@ temp_Rmean$REGION <- factor(temp_Rmean$REGION, levels = c("MHI","NMI","WAKE","SM
 temp_Rmean$OBS_YEAR<-as.factor(temp_Rmean$OBS_YEAR)
 #Add Posthoc groupings from glms
 temp_Rmean<- temp_Rmean[order(temp_Rmean$REGION),];temp_Rmean
-temp_Rmean$sig<-c("ab","a","b","a","b","","","","","","","a","b","","")
+temp_Rmean$sig<-c("a","a","b","a","b","","","","","","","a","b","","")
 
 #scale_fill_manual(values = c("#CC79A7","#D55E00","#E69F00","#F0E442","#009E73","#56B4E9","#0072B2","#999999")) +
   
@@ -380,14 +375,14 @@ p8 <- ggplot(temp_Rmean, aes(x=OBS_YEAR, y=JuvColDen,fill=REGION)) +
             vjust = -0.5) 
 p8
 
-ggsave(plot=p8,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Figure2_v3.jpg",width=10,height=5)
+ggsave(plot=p8,file="Plots/Figure2.jpg",width=10,height=5)
 
 
 
-# Spatial Trends in Juveniles averaged across years --------------------------------------------
+# SPATIAL PATTERNS-Prep --------------------------------------------
 
 table(site.swS$ISLAND,site.swS$DB_RZ)
-nrow(site.swS) #total number of sites used in the spatial analysis
+nrow(site.swS) #total number of sites used in the spatial analysis-1405
 
 #Use survey package to calculate mean SE and conduct statistical analyses
 site.swS$OBS_YEAR<-as.factor(site.swS$OBS_YEAR)
@@ -402,6 +397,7 @@ spatial_Rmean<-svyby(~JuvColDen,~REGION,des,svymean)
 
 #Test fixed effects of region and year
 modR<-svyglm(JuvColCount ~ REGION, design=des,offset= TRANSECTAREA_j, family="poisson")
+regTermTest(modR,~REGION)
 summary(modR)
 tuk2<-glht(modR, mcp(REGION="Tukey")) 
 tuk.cld2 <- cld(tuk2)
@@ -413,6 +409,9 @@ spatial_Rmean<-cbind(spatial_Rmean,sig)
 spatial_Rmean$REGION <- factor(spatial_Rmean$REGION, levels = c("NWHI","MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
 #Add Posthoc groupings from glms
 spatial_Rmean<- spatial_Rmean[order(spatial_Rmean$REGION),];spatial_Rmean
+
+
+# Figure 1B ---------------------------------------------------------------
 
 spatialR <- ggplot(spatial_Rmean, aes(x=REGION, y=JuvColDen,fill=REGION)) +
   #geom_bar(stat = "identity", position = position_dodge2(preserve='single'), width = 1, color="black") +
@@ -439,8 +438,9 @@ spatialR <- ggplot(spatial_Rmean, aes(x=REGION, y=JuvColDen,fill=REGION)) +
             vjust = -0.5,size = 5) 
 spatialR
 
-ggsave(plot=spatialR,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Fig1B.jpg",width=8,height=5)
+ggsave(plot=spatialR,file="Plots/Fig1B.jpg",width=8,height=5)
 
+# Figure S2 ---------------------------------------------------------------
 
 spatial_Imean<-svyby(~JuvColDen,~REGION + ISLAND,des,svymean)
 spatial_Imean$REGION <- factor(spatial_Imean$REGION, levels = c("NWHI","MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
@@ -468,10 +468,10 @@ p10 <- ggplot(spatial_Imean, aes(x=reorder(ISLAND,-JuvColDen), y=JuvColDen,color
 p10
 
 
-ggsave(plot=p10,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/FigureS2_v2.jpg",width=10,height=5)
+ggsave(plot=p10,file="Plots/FigureS2.jpg",width=10,height=5)
 
 
-# Plot Pacific-wide Map most recent Juvenile Density -------------------------
+# Figure 1A- Plot Pacific-wide Map most recent Juvenile Density -------------------------
 
 ##Helpful website for plotting maps with ggplot https://r-spatial.org/r/2018/10/25/ggplot2-sf-2.html
 
@@ -588,41 +588,4 @@ finalmap = ggdraw() +
   
 finalmap
 
-ggsave(plot=finalmap,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/new.Figure1.jpg",width=13,height=9)
-
-#OLD version
-#plot main data map with island colors = REGION
-delta_shift$REGION <- factor(delta_shift$REGION, levels = c("NWHI","MHI","NMI","WAKE","SMI","SAMOA","LINE","PHOENIX"))
-delta_shift<- delta_shift[order(delta_shift$REGION),];delta_shift
-
-
-deltamap<-ggplot() +
-  geom_sf(data = pacific_crop)+ #basemap
-  geom_sf(data = delta_shift, aes(fill = REGION),color="black",size = 3, pch=21)+ #data
-  geom_text_repel(data = delta_shift, #add island labels 
-                  aes(x = X...7, y = Y...8, label = ISLAND),
-                  size = 5,
-                  fontface = "bold",
-                  segment.size = 0.25,
-                  box.padding = 0.4,
-                  min.segment.length = 0,
-                  max.overlaps = Inf,
-                  seed = 2020-5-16)+
-  labs(title="A")+
-  scale_fill_manual(name=NULL,values = c("#CC79A7","#D55E00","#E69F00","#F0E442","#009E73","#56B4E9","#0072B2","#999999")) +
-  annotation_scale(location = "bl", width_hint = 0.4)+ #add scale bar
-  #theme(legend.position = c(0.9,0.15))
-  theme(legend.position = "none")
-
-
-#Combine main and inset maps
-finalmap = ggdraw() +
-  draw_plot(deltamap) +
-  draw_plot(spatialR, x = 0.05, y = 0.075, width = 0.45, height = 0.45)+
-  #draw_plot(insetmap, x = 0.02, y = 0.07, width = 0.3, height = 0.3)
-  draw_plot(insetmap, x = 0.77, y = 0.1, width = 0.23, height = 0.23)
-
-finalmap
-
-ggsave(plot=finalmap,file="T:/Benthic/Projects/Juvenile Project/Manuscript/Figures/Figure 1.jpg",width=13,height=9)
-
+ggsave(plot=finalmap,file="Plots/Figure1_f.jpg",width=13,height=9)

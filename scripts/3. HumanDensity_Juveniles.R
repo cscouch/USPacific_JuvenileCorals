@@ -9,42 +9,44 @@ library(raster)
 library(readr)
 library(ncdf4)
 dir = Sys.info()[7]
+setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
 
-#Read in human density data
-gpw_pop <- stack(paste0("T:/Benthic/Projects/Juvenile Project/Data/gpw_v4_population_density_rev11_2pt5_min.nc"))
+#Read in human density data- 2.5min resolution- note the NC file is 2.78GB
+gpw_pop<- stack(paste0("Data/gpw_v4_population_density_rev11_2pt5_min.nc"))
 
-gpw_pop1 <- gpw_pop[["X1"]] #2000 pop density estimate
-gpw_pop2 <- gpw_pop[["X2"]] #2005 pop density estimate
-gpw_pop3 <- gpw_pop[["X3"]] #2010 pop density estimate
-gpw_pop4 <- gpw_pop[["X4"]] #2015 pop density estimate
+gpw_pop1<- gpw_pop[["X1"]] #2000 pop density estimate
+gpw_pop2<- gpw_pop[["X2"]] #2005 pop density estimate
+gpw_pop3<- gpw_pop[["X3"]] #2010 pop density estimate
+gpw_pop4<- gpw_pop[["X4"]] #2015 pop density estimate
 #gpw_pop5 <- gpw_pop[["X5"]] #2020 pop density estimate
 
 #Average 200-2015 data
-gpw_pop = stack(gpw_pop1, gpw_pop2, gpw_pop3, gpw_pop4)
-gpw_pop = mean(gpw_pop)
+gpw_pop<- stack(gpw_pop1, gpw_pop2, gpw_pop3, gpw_pop4)
+gpw_pop<- mean(gpw_pop)
 
 plot(log10(gpw_pop))
 
-#Read in site-level juvenile data
-df = read.csv("T:/Benthic/Projects/Juvenile Project/Data/JuvProject_SITE_weights_AllYears.csv")
+#Read in site-level juvenile data from scripts 1 and 2
+df<- read.csv("Data/outputs/JuvProject_SITE_weights_AllYears.csv")
 
 #Convert to a spatial points dataframe
-df = df[complete.cases(df[,c("LONGITUDE", "LATITUDE")]), ]
-df_sp = df
-coordinates(df_sp) = ~LONGITUDE + LATITUDE
+df<- df[complete.cases(df[,c("LONGITUDE", "LATITUDE")]), ]
+df_sp<- df
+coordinates(df_sp)<- ~LONGITUDE + LATITUDE
 
-crs(df_sp) = crs(gpw_pop)
+crs(df_sp)<- crs(gpw_pop)
 
-# bring in the EDS ExpandingExtract.R here.
+# bring in the EDS ExpandingExtract.R - access through https://github.com/krtanaka/ncei_eds.git
 source(paste0("C:/Users/", dir, "/Documents/GitHub/env_data_summary/scripts/HelperCode/ExpandingExtract.R"))
 
 this_Ex = ExpandingExtract(gpw_pop, df_sp, Dists = c(0, 50, 100, 1000, 2000, 4000))
 colnames(this_Ex)[1] = "HumanDen"
 df = cbind(df, this_Ex)
-nohum<-c("BAK","HOW","JAR","KIN","MAR","LIS","LAY","FFS","PHR","KUR")
+nohum<-c("BAK","HOW","JAR","KIN","MAR","LIS","LAY","FFS","PHR","KUR") #vector of islands that are uninhabited
 
 
-#Several of the islands do actually have year-round field staff, or the values in the NASA data are not accurate. Correct this using the following code
+#Several of the islands do actually have year-round field staff, or the values in the NASA data are not accurate. 
+#Correct this using the following code
 df<-df %>%
   mutate(HumanDen = dplyr::case_when(ISLAND =="Wake" ~ 150/25,
                                      ISLAND =="Midway" ~ 40/25,
@@ -58,5 +60,5 @@ df<-df %>%
 
 
 
-write_csv(df, file = "T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights_AllYears_wHD.csv")
+write_csv(df, file = "Data/outputs/JuvProject_SITE_weights_AllYears_wHD.csv")
        

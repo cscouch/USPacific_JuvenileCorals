@@ -1,14 +1,21 @@
-# WAVE ACTION CALCULATOR #
-## this code assigns wave action per juvenile coral site using two wave data files
-# 
-# 
-# 
+#This script combines wave power and juvenile-level data
+#The long-term climatology (1979-2012) of wave power was calculated from wave height, period and dominant direction generated 
+#from the Global WaveWatchIII data shadowed by coastlines using Incident Wave Swath (IWS) (watts per meter of wave front (kWh m-1)) 
+#measured within the nearest 800m of a site (Aston et al. 2018).
+#https://coastwatch.pfeg.noaa.gov/erddap/griddap/NWW3_Global_Best.html
+
+
+# Use the following package versions
 # [1] spatial_7.3-13  ggrepel_0.8.2   ggspatial_1.1.4 ggsn_0.5.0    
 # [5] ggplot2_3.3.2   ncf_1.2-9       raster_3.4-5    sf_0.9-8      
 #     sp_1.4-4      
 # 
 # devtools::install_version("spatial", version = "7.3-13", repos = "http://cran.us.r-project.org")
-#     
+  
+rm(list=ls())
+dir = Sys.info()[7]
+setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
+
 
 library(dplyr)
 library(sp)
@@ -20,16 +27,11 @@ library(ggspatial)
 library(ggrepel)
 
 
-
-
-setwd("M:/Environmental_Data_Summary/Data_Download/WaveEnergySwath")
-list.files()
-
 ### read in wave data
-cont <- read.csv("15m_contours.csv") # wave data generated from the 15m depth contour to help fill in the gaps from where the fish sites weren't surveyed
-fish <- read.csv("FISH_waves_1979_2010.csv") # wave data from historical fish sites 
+cont <- read.csv("Data/Pacific_wavepower_15m_contours.csv") # wave data generated from the 15m depth contour to help fill in the gaps from where the fish sites weren't surveyed
+fish <- read.csv("Data/Pacific_wavepower_fish_1979_2010.csv") # wave data from historical fish sites 
 
-#Data cleanup
+# Data Clean-up -----------------------------------------------------------
 head(cont)
 colnames(cont)
 cont <- cont[ which(cont$BAD_FLAG == 0),] # remove the bad flags
@@ -37,10 +39,11 @@ cont$X2011 <- NULL # remove 2011 and 2012 data so both datasets have same year r
 cont$X2012 <- NULL
 cont$BAD_FLAG <- NULL
 
+
 head(fish)
 colnames(fish)
-fish<-fish%>% dplyr::filter(Site!="GUA-01310") #remove this site because it doesn't have a lat and long
-fish<-fish%>% dplyr::filter(fish$BAD_FLAG == 0) #remove this site because it doesn't have a lat and long
+fish<-subset(fish,Site!="GUA-01310") #remove this site because it doesn't have a lat and long
+fish<-subset(fish,BAD_FLAG == 0) #remove this site because it doesn't have a lat and long
 
 fish$Wave.Power..kwhr.m. <- NULL
 fish$ISL <- substr(fish$Site, 1, 3)
@@ -61,7 +64,7 @@ all_2<-all %>%
 head(as.data.frame(all_2))
 
 # save full wave action dataframe as a new data set
-write.csv(all_2, "WaveActionPacific_1997_2010.csv")
+#write.csv(all_2, "WaveActionPacific_1997_2010.csv")
 
 
 # convert to spatial points data frame
@@ -70,7 +73,7 @@ all_sp <- SpatialPointsDataFrame(coords = xy, data = all_2,
                                proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
 
 ### read in juvenile data
-juv<-read.csv("T:/Benthic/Projects/Juvenile Project/JuvProject_SITE_weights_AllYears_wHD.csv")
+juv<-read.csv("Data/outputs/JuvProject_SITE_weights_AllYears_wHD.csv")
 
 juvS<-subset(juv,GENUS_CODE=="SSSS") #subset just total hard coral for each site
 juvS <- subset(juvS,select=c(ISLAND,SITE,LATITUDE,LONGITUDE)) # remove extra columns -- only need site name + coords
@@ -78,7 +81,7 @@ colnames(juvS)
 
 
 #Read in islands shapefile
-islands<-st_read("U:/GIS/Data/Pacific/islands.shp")
+islands<-st_read("Data/islands.shp")
 
 #Plotting the wave and juvenile data for a subset of islands to check overlap
 #Helpful website for plotting maps with ggplot https://r-spatial.org/r/2018/10/25/ggplot2-sf-2.html
@@ -116,9 +119,10 @@ juv_sp <- SpatialPointsDataFrame(coords = xy_juv, data = juvS,
 str(juv_sp)
 
 
-### calculate the mean wave action values within 250m radius of each juv point
+### calculate the mean wave action values within 250m radius of each juvenile site
 # source expanding extract function
-source("M:/Environmental_Data_Summary/HelperCode/ExpandingExtract_Flex.R")
+source(paste0("C:/Users/", dir, "/Documents/GitHub/env_data_summary/scripts/HelperCode/ExpandingExtract_Flex.R"))
+#source("M:/Environmental_Data_Summary/HelperCode/ExpandingExtract_Flex.R")
 sites_waves <- ExpandingExtract_Flex(Data = all_sp, SurveyPts = juv_sp,
                                      Dists = seq(0, 4000, by = 50),Data_Col = "medians",REPORT = T) # you may not want to keep sites that have wave data from 4km away, but you can drop these sites later in the script
 
