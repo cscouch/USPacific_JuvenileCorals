@@ -11,8 +11,8 @@ library(ncdf4)
 dir = Sys.info()[7]
 setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
 
-#Read in human density data- 2.5min resolution- note the NC file is 2.78GB
-gpw_pop<- stack(paste0("Data/gpw_v4_population_density_rev11_2pt5_min.nc"))
+#Read in human density data- 2.5min resolution- note the NC file is 2.78GB and can not be stored on github- download from https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-rev11/data-download
+gpw_pop<- stack(paste0("T:/Benthic/Projects/Juvenile Project/Data/gpw_v4_population_density_rev11_2pt5_min.nc")) #change file path to your local drive that houses the data
 
 gpw_pop1<- gpw_pop[["X1"]] #2000 pop density estimate
 gpw_pop2<- gpw_pop[["X2"]] #2005 pop density estimate

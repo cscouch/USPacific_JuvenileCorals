@@ -8,10 +8,17 @@
 # Use the following package versions
 # [1] spatial_7.3-13  ggrepel_0.8.2   ggspatial_1.1.4 ggsn_0.5.0    
 # [5] ggplot2_3.3.2   ncf_1.2-9       raster_3.4-5    sf_0.9-8      
-#     sp_1.4-4      
-# 
-# devtools::install_version("spatial", version = "7.3-13", repos = "http://cran.us.r-project.org")
-  
+#     sp_1.4-4   
+
+# spatial_7.3-13  
+# raster_3.4-5 
+# sf_0.9-8       
+# sp_1.4-4
+# https://github.com/krtanaka/ncei_eds
+devtools::install_version("spatial", version = "7.3-13", repos = "http://cran.us.r-project.org")
+devtools::install_version("sp", version = "1.4-4", repos = "http://cran.us.r-project.org")
+devtools::install_version("sf", version = "0.9-8", repos = "http://cran.us.r-project.org")
+
 rm(list=ls())
 dir = Sys.info()[7]
 setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
@@ -214,10 +221,10 @@ Plot_WaveJuv(islands,all_2,juv,"PHR","Pearl & Hermes",-176.1,-175.3,27.5, 27.9)
 Plot_DistCheck(islands,juv_2,"Pearl & Hermes",-176.1,-175.3,27.5, 27.9)
 
 
-#Cleanup dataframe & Export to the Predictor script "Juvenile Project Predictor Variables_SITE_v2.R"
+#Cleanup dataframe & save to use in the 7. Prepare Predictor Variables_Juveniles.R script"
 head(juv_2)
 wave<-juv_2%>% dplyr::select(ISLAND:values)
 wave<-wave %>% dplyr::rename(WavePower=values)
 
 #save the data
-write.csv(wave,file="T:/Benthic/Projects/Juvenile Project/Pacific_WaveActionData_v6.csv",row.names = F)
+write.csv(wave,file="Data/outputs/Pacific_WaveActionData.csv",row.names = F)

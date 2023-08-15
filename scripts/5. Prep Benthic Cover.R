@@ -1,65 +1,59 @@
+#This script imports raw point data from CPCe and CoralNet and calculates site-level cover data at the functional and tier 3 level.
+
+
 rm(list=ls())
+dir = Sys.info()[7]
+setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
 
 
-library(gdata)             # needed for drop_levels()
-library(reshape)           # reshape library inclues the cast() function used below
-library(RODBC)            # to connect to oracle
+#Load Functions and helper files 
+source("scripts/Functions_Juveniles.R")
 
-#LOAD LIBRARY FUNCTIONS ... 
-source("C:/Users/Courtney.S.Couch/Documents/GitHub/Benthic-Scripts/Functions/Benthic_Functions_newApp.R")
-source("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/lib/core_functions.R")
-source("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/lib/fish_team_functions.R")
-source("C:/Users/Courtney.S.Couch/Documents/GitHub/fish-paste/lib/Islandwide Mean&Variance Functions.R")
+sm<-read.csv("SupportFiles/SURVEY MASTER_Juveniles.csv") #The survey master file is a full list of all of the sites with metadata
+sectors<-read.csv("SupportFiles/SectorArea_Juveniles.csv") 
 
-#BIA data - this is from CPCE
-load("T:/Benthic/Data/REA Coral Demography & Cover/Raw from Oracle/ALL_BIA_STR_RAW_NEW.rdata")   #bia
+sm$SITE<-as.factor(sm$SITE)
+sm$SITE<-SiteNumLeadingZeros(sm$SITE)
 
+#Convert date formats
+sm$DATE_<-lubridate::mdy(sm$DATE_)
+class(sm$DATE_)
+
+head(sm)
+
+# Load and format Point Data ----------------------------------------------
+
+#CPCe data (2010-2014)
+load("Data/PacificNCRMP_CPCE_StRS.rdata")   #bia
+
+# Change site number such as MAR-22 to MAR-0022 to avoid changing to "March 22"
+bia$SITE<- as.factor(bia$SITE)
 bia$SITE<-SiteNumLeadingZeros(bia$SITE)
 
-#CNET data - from CoralNet
+#CoralNet data (2014-2019)
 #These data contain human annotated data. There may be a small subset of robot annotated data. 
 #The robot annotations are included because the confidence threshold in CoralNet was set to 70-90% allowing the robot to annotate points when it was 70-90% certain.
-load("T:/Benthic/Data/REA Coral Demography & Cover/Raw from Oracle/ALL_BIA_STR_CNET.rdata") #load data
+load("Data/PacificNCRMP_CNET_StRS.rdata") #load data
 
+cnet$SITE<- as.factor(cnet$SITE)
 cnet$SITE<-SiteNumLeadingZeros(cnet$SITE)
 
-#Temporary work around for merging in 2015 and 2017 NWHI data that hasn't been uploaded to Oracle yet- remove this once Michael has incorporated data
-new.nw<-read.csv("T:/Benthic/Data/REA Coral Demography & Cover/Raw Data from CoralNet/2015_2017_NWHI_CnetAnnotations_formatted.csv")
-new.nw<-new.nw %>% drop_na(ROUNDID) #remove blank rows
-new.laysan<-read.csv("T:/Benthic/Data/REA Coral Demography & Cover/Raw Data from CoralNet/2015_2017_NWHI_CnetAnnotations_Laysan_formatted.csv")
-new.laysan<-new.laysan %>% drop_na(ROUNDID) #remove blank rows
-
-new.cnet<-rbind(new.nw,new.laysan)
+#CoralNet data from NWHI 2015 and 2017 that hasn't been uploaded NCEI yet
+new.cnet<-read.csv("Data/2015_2017_NWHI_CnetAnnotations.csv")
+new.cnet<-new.cnet %>% drop_na(ROUNDID) #remove blank rows
 
 class(new.cnet$DATE_)
-class(new.cnet$DATE_TAKEN)
+class(new.cnet$DATE_ANNOTATED)
 
-#Date conversations still not working
+#Convert Date formats
 new.cnet$DATE_<-lubridate::mdy(new.cnet$DATE_)
-new.cnet$DATE_TAKEN<-lubridate::ymd(new.cnet$DATE_TAKEN);head(new.cnet$DATE_TAKEN)
-new.cnet$DATE_ANNOTATED<-lubridate::ymd_hms(new.cnet$DATE_ANNOTATED);head(new.cnet$DATE_ANNOTATED)
+new.cnet$DATE_TAKEN<-lubridate::mdy(new.cnet$DATE_TAKEN);head(new.cnet$DATE_TAKEN)
+new.cnet$DATE_ANNOTATED<-as.Date(mdy_hms(new.cnet$DATE_ANNOTATED));head(new.cnet$DATE_ANNOTATED)
 
-#combine old cnet and 2015 & 2017 nwhi cnet data
+#Combine all CoralNet dataframes
 cnet<-rbind(cnet,new.cnet) 
 table(cnet$REGION,cnet$OBS_YEAR)
-table(new.cnet$ISLAND,new.cnet$OBS_YEAR)
 
-
-##Generate Table of all the bia categories to review
-head(bia)
-bia_tab<-ddply(bia,.(TIER_1, CATEGORY_NAME, TIER_2, SUBCATEGORY_NAME, TIER_3, GENERA_NAME),summarize,count=sum(POINTS))
-#write.csv(bia_tab, file="BIA categories.csv")
-table(bia$TIER_1)
-table(bia$TIER_2)
-
-##Generate Table of all the bia categories to review
-head(cnet)
-cnet_tab<-ddply(cnet,.(CATEGORY_CODE,CATEGORY_NAME,SUBCATEGORY_CODE,SUBCATEGORY_NAME,GENERA_CODE,GENERA_NAME,FUNCTIONAL_GROUP),summarize,count=length(ROUNDID))
-
-sm$SITE<-SiteNumLeadingZeros(sm$SITE)
-sectors<-read.csv("C:/Users/courtney.s.couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SectorArea_Juveniles.csv")
-
-test<-subset(sm,OBS_YEAR=="2019",TRANSECT_PHOTOS=="-1");nrow(test)
 
 # Merge together all Photoquad Datasets & make sure columns match ---------------------------------------
 bia$METHOD<-"CPCE"
@@ -74,38 +68,23 @@ cnet$TIER_2<-cnet$SUBCATEGORY_CODE
 cnet$TIER_3<-cnet$GENERA_CODE
 
 
-#Combine cpc and coralnet
+#Combine cpce and coralnet
 FIELDS_TO_RETAIN<-c("MISSIONID","METHOD", "REGION", "OBS_YEAR","ISLAND", "SITEVISITID","SITE", "LATITUDE", "LONGITUDE", "REEF_ZONE", "DEPTH_BIN", "PERM_SITE", 
                     "CLIMATE_STATION_YN", "MIN_DEPTH", "MAX_DEPTH", "HABITAT_CODE", "REP", "IMAGE_NAME", "PHOTOID", "ANALYST", "TIER_1", "CATEGORY_NAME", 
                     "TIER_2", "SUBCATEGORY_NAME", "TIER_3", "GENERA_NAME", "POINTS")
 x<-bia[,FIELDS_TO_RETAIN]; head(x)
 y<-cnet[,FIELDS_TO_RETAIN]; head(y)
 
-ab<-rbind(x,y)
+ab<-rbind(x,y) #Full raw point data
 
-
-#Flag sites that have more than 33 and less than 15 images
-#With the exception of OCC 2012 sites, there should be 30 images/site/10 points/image
-test<-ddply(ab,.(OBS_YEAR,SITEVISITID,SITE),summarize,count=sum(POINTS))
-test2<-test[test$count<150 |test$count>330,]
-View(test2)
-
-#Remove sites with less than 150 points
-test3<-test[test$count<150,];test3
-ab<-ab[!(ab$SITE %in% test3$SITE),];head(ab)
-subset(ab,SITE %in% c("TUT-00210","TUT-00275","OAH-00558")) #double check that sites were dropped properly
 
 #Generate a table of # of sites/region and year from original datasets before data cleaning takes place
 #use this later in the script to make sure sites haven't been dropped after data clean up.
 oracle.site<-ddply(ab,.(REGION,OBS_YEAR),summarize,nSite=length(unique(SITE)))
 oracle.site
 
-#Check this against site master list
-table(sm$REGION,sm$OBS)
-ab.site<-ddply(subset(cnet,OBS_YEAR=="2019"),.(REGION,OBS_YEAR),summarize,nSite=length(unique(SITE)));ab.site
 
-SURVEY_INFO<-c("OBS_YEAR", "REGION",  "ISLAND")
-survey_island<-Aggregate_InputTable(cnet, SURVEY_INFO)
+# Reclassify Encrusting Macroalgae and Halimeda --------------------------------------------
 
 #There are some missing Tier3 information. If these data are missing then fill it with tier2 code
 CATEGORY_FIELDS<-c("METHOD", "TIER_1", "CATEGORY_NAME", "TIER_2", "SUBCATEGORY_NAME", "TIER_3", "GENERA_NAME")
@@ -116,9 +95,8 @@ ab[is.na(ab$TIER_3), ]$TIER_3<-ab[is.na(ab$TIER_3), ]$TIER_2
 ab[is.na(ab$GENERA_NAME), ]$GENERA_NAME<-ab[is.na(ab$GENERA_NAME), ]$SUBCATEGORY_NAME
 ab<-droplevels(ab)
 
-# Reclassify EMA and Halimeda --------------------------------------------
 
-#CREATING CLASS EMA "Encrusting Macroalgae
+#Create EMA class "Encrusting Macroalgae
 levels(ab$TIER_1)<-c(levels(ab$TIER_1), "EMA")
 levels(ab$CATEGORY_NAME)<-c(levels(ab$CATEGORY_NAME), "Encrusting macroalga")
 ab[ab$GENERA_NAME %in% c("Lobophora sp","Peyssonnelia sp", "Encrusting macroalga"),]$TIER_1<-"EMA"
@@ -135,29 +113,26 @@ ab$TIER_3<-ifelse(ab$TIER_3=="HALI","HAL",as.character(ab$TIER_3))
 ab$TIER_1<-ifelse(ab$TIER_3=="HAL","HAL",as.character(ab$TIER_1))
 ab$CATEGORY_NAME<-ifelse(ab$TIER_3=="HAL","Halimeda sp",ab$CATEGORY_NAME)
 
-hal<-subset(ab,TIER_1=="HAL")
-head(hal)
-
 
 test<-ddply(ab,.(REGION,OBS_YEAR),summarize,nSite=length(unique(SITE)))
 test
 
-#### WORKING WITH CLEAN DATA FILE AT THIS POINT  
+#### Clean Data 
 ab<-droplevels(ab)
 table(ab$ISLAND, ab$OBS_YEAR)
 
 summary(ab)
-
-#We are missing depth bin, reef zone and habitat_code information from some sites.
-#This information is also missing from the SURVEY MASTER file
-
-levels(ab$DEPTH_BIN)<-c(levels(ab$DEPTH_BIN), "UNKNOWN")
-levels(ab$REEF_ZONE)<-c(levels(ab$REEF_ZONE), "UNKNOWN")
-levels(ab$HABITAT_CODE)<-c(levels(ab$HABITAT_CODE), "UNKNOWN")
-
-ab[is.na(ab$DEPTH_BIN),]$DEPTH_BIN<-"UNKNOWN"
-ab[is.na(ab$REEF_ZONE),]$REEF_ZONE<-"UNKNOWN"
-ab[is.na(ab$HABITAT_CODE),]$HABITAT_CODE<-"UNKNOWN"
+# 
+# #We are missing depth bin, reef zone and habitat_code information from some sites.
+# #This information is also missing from the SURVEY MASTER file
+# 
+# levels(ab$DEPTH_BIN)<-c(levels(ab$DEPTH_BIN), "UNKNOWN")
+# levels(ab$REEF_ZONE)<-c(levels(ab$REEF_ZONE), "UNKNOWN")
+# levels(ab$HABITAT_CODE)<-c(levels(ab$HABITAT_CODE), "UNKNOWN")
+# 
+# ab[is.na(ab$DEPTH_BIN),]$DEPTH_BIN<-"UNKNOWN"
+# ab[is.na(ab$REEF_ZONE),]$REEF_ZONE<-"UNKNOWN"
+# ab[is.na(ab$HABITAT_CODE),]$HABITAT_CODE<-"UNKNOWN"
 
 
 #Generate a SITE table
@@ -166,7 +141,7 @@ sites<-unique(ab[,c("METHOD","REGION","OBS_YEAR","ISLAND","PERM_SITE","CLIMATE_S
 dim(sites)
 
 
-# Generate Site-level Data at TIER 1 level--------------
+# Generate Site-level Data at TIER 1 (functional) level--------------
 
 photo<-dcast(ab, formula=METHOD + OBS_YEAR + SITEVISITID + SITE  ~ TIER_1, value.var="POINTS", sum, fill=0)
 head(photo)
@@ -198,14 +173,6 @@ test1<-ddply(wsd,.(REGION,OBS_YEAR),summarize,nSite_wsd=length(unique(SITE)))
 full_join(test1,oracle.site)
 
 #Merge Tier 1 data with SURVEY MASTER FILE
-sm<-read.csv("C:/Users/courtney.s.couch/Documents/GitHub/USPacific_JuvenileCorals/SupportFiles/SURVEY MASTER_Juveniles.csv")
-
-#Convert date formats
-sm$DATE_<-lubridate::mdy(sm$DATE_)
-class(sm$DATE_)
-
-head(sm)
-
 sm<-sm[,c("DATE_","MISSIONID","SITEVISITID","SITE","ANALYSIS_YEAR","ANALYSIS_SCHEME","OBS_YEAR","SEC_NAME","EXCLUDE_FLAG","new_MIN_DEPTH_M","new_MAX_DEPTH_M")]
 wsd_t1<-merge(sm,wsd,by=c("SITEVISITID","SITE","OBS_YEAR"),all.y=TRUE)
 head(wsd_t1)
@@ -223,10 +190,10 @@ wsd_t1<-subset(wsd_t1,new.N >=150)
 wsd_t1<-subset(wsd_t1,EXCLUDE_FLAG!="-1")
 
 #Save Tier 1 site data to t drive. This file has all sites (fish, benthic and OCC) that were annoated between 2010 and 2018
-write.csv(wsd_t1, file="T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier1_SITE.csv",row.names=F)
+write.csv(wsd_t1, file="Data/outputs/BenthicCover_2010-2019_Tier1_SITE.csv",row.names=F)
 
 
-# Generate Site-level Data at TIER 3 level--------------
+# Generate Site-level Data at TIER 3 (genus-morphology for corals, dominant genus level for algae) level--------------
 photo<-dcast(ab, formula=METHOD + OBS_YEAR + SITEVISITID + SITE  ~ TIER_3, value.var="POINTS", sum, fill=0)
 head(photo)
 
@@ -252,8 +219,6 @@ wsd<-merge(sites, photo, by=c("METHOD", "OBS_YEAR", "SITEVISITID"), all.y=T)
 wsd_t3<-merge(sm,wsd,by=c("SITEVISITID","SITE","OBS_YEAR"),all.y=TRUE)
 head(wsd_t3)
 
-test<-wsd_t3[is.na(wsd_t3$TRANSECT_PHOTOS),]
-View(test) # none of the 2010 imagery has TRANSECT_PHOTOS assigned - ASK MICHAEL TO FIX
 wsd_t3$TRANSECT_PHOTOS<-"-1" #make sure that all rows = -1
 
 
@@ -268,5 +233,5 @@ wsd_t3<-subset(wsd_t3,EXCLUDE_FLAG!="-1")
 
 
 #Save Tier 1 site data to t drive. This file has all sites (fish, benthic and OCC) that were annoated between 2010 and 2018
-write.csv(wsd_t3, file="T:/Benthic/Projects/Juvenile Project/Data/BenthicCover_2010-2019_Tier3_SITE.csv",row.names = F)
+write.csv(wsd_t3, file="Data/outputs/BenthicCover_2010-2019_Tier3_SITE.csv",row.names = F)
 
