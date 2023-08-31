@@ -1,9 +1,16 @@
-#This script reads in the raw DHW data that were merged with the SURVEY_MASTER file using the M:\Environmental Data Summary\EDS GitHub respository\scripts\Extract_Full_EnvironmentalData.R
+#This script reads in the raw DHW data that were merged with environmental summary data set
 #The script calculates the time between the last survey date and the previously most recent 8 DHW event 
-#The raw DHW files are large, but the for loop reads them in individually then remove the df from the workspace before reading in the next- you can run this script on your laptop
+
+#BEFORE RUNNING SCRIPT- 
+#The raw Coral Reef Watch DHW data files are very large and can not be stored in github. To run this script, you will need to
+#navigate to https://oceanwatch.pifsc.noaa.gov/erddap/griddap/CRW_dhw_v1_0.html to download the raw data and store them locally.
+
+#This script uses a for loop to read in the raw data file for each island individually then remove the df from the workspace before reading in the next- you can run this script on your laptop
 
 
-rm(list = ls())
+rm(list=ls())
+dir = Sys.info()[7]
+setwd(paste0("C:/Users/", dir, "/Documents/GitHub/USPacific_JuvenileCorals/"))
 
 library(dplyr)
 library(tidyr)
@@ -12,9 +19,8 @@ library(stringr)
 library(lubridate)
 library(ggplot2)
 
-setwd("M:/Environmental Data Summary/DataDownload/Degree_Heating_Weeks/RAW")
 
-#Define the list of island files you will be loading
+#Define the list of island files you will be loading -1 folder with 1 DHW file for each island stored as .Rdata
 file_list <- list.files("M:/Environmental Data Summary/DataDownload/Degree_Heating_Weeks/RAW")
 # file.miss<-c("Swains_raw_Degree_Heating_Weeks.RData","Kauai_raw_Degree_Heating_Weeks.RData","Kingman_raw_Degree_Heating_Weeks.RData",
 #              "Molokai_raw_Degree_Heating_Weeks.RData","Niihau_raw_Degree_Heating_Weeks.RData","Oahu_raw_Degree_Heating_Weeks.RData",
@@ -23,7 +29,7 @@ file_list <- list.files("M:/Environmental Data Summary/DataDownload/Degree_Heati
 #load("M:/Environmental Data Summary/DataDownload/Degree_Heating_Weeks/RAW/Kure_raw_Degree_Heating_Weeks.RData")
 
 #Read in raw juvenile data (this file is used to identify which sites you want to extract DHW for- the file needs to have a date column)
-juvdata<-read.csv("T:/Benthic/Data/REA Coral Demography & Cover/Analysis Ready Raw data/CoralBelt_Juveniles_raw_CLEANED.csv")
+juvdata<-read.csv("Data/outputs/CoralBelt_Juveniles_raw_CLEANED.csv")
 #juvdata_recent<-dplyr::filter(juvdata,OBS_YEAR>=2017) #Only use most recent survey years
 
 juvdata <- mutate_if(juvdata,
@@ -35,8 +41,8 @@ levels(as.factor(juvdata$ISLAND))
 minpositive = function(x) min(x[x > 0])
 
 
+# Calculate time since last DHW  4 and 8 event ----------------------------
 
-#Calculate time since last DHW  4 and 8 event
 TimeSinceDHW8<-function(data,jwd){
 
   #Remove columns with column names = NA and rows with NaN
@@ -115,10 +121,12 @@ View(df.all)
 
 #df.all3<-rbind(df.all,df.all2)
 
-write.csv(df.all,file="T:/Benthic/Projects/Juvenile Project/Juvenile_TimeSinceDHW4_8_v2.csv")
+write.csv(df.all,file="Data/outputs/Juvenile_TimeSinceDHW4_8_v2.csv")
 
 
-#Calculate Date of Peak DHW for each year
+
+# Calculate Date of Peak DHW for each year --------------------------------
+
 
 DHWPeak<-function(data,jwd){
   
@@ -162,11 +170,14 @@ for(i in 1:length(file_list)){
 }
 View(peak.all)
 
-write.csv(peak.all,file="T:/Benthic/Projects/Juvenile Project/Juvenile_PeakDHW.csv")
+write.csv(peak.all,file="Data/outputs/Juvenile_PeakDHW.csv")
 
   
 data=df_i
 jwd=juvdata
+
+
+# Create a timeline of heat stress for Pacific NCRMP regions  -------------
 
 #Calculate average DHW for each date  
 HS_Timeline<-function(data,jwd){
@@ -210,55 +221,5 @@ for(i in 1:length(file_list)){
 View(hs.all)
 
 
-write.csv(hs.all,file="T:/Benthic/Projects/Juvenile Project/Juvenile_HSTimeline.csv",row.names=FALSE)
-
-
-
-#Plot DHW time series to spot check
-
-dhw8$DATE_<-as.Date(dhw8$DATE_)
-dhw4$DATE_<-as.Date(dhw4$DATE_)
-dhw$DATE_<-as.Date(dhw$DATE_)
-dhw_r<-subset(dhw,DATE_>="2010-01-01")
-
-dhw_r$DATE_ <- as.POSIXct(dhw_r$DATE_, format = "%m/%d/%Y")
-
-dhw_r$year<-format(dhw_r$DATE_, format = "%Y")
-
-dhw_r$mon<-format(dhw_r$DATE_, format = "%m")
-dhw_r$day<-format(dhw_r$DATE_, format = "%d")
-
-dhw_mon_max<-ddply(dhw_r,.(ISLAND,year,mon),
-                   summarize,
-                   DHW=max(DHW))
-
-  
-ggplot(subset(dhw_mon_max), aes(x=mon, y=DHW,group=year,color=year)) +
-  geom_line(size=1.5)+
-  theme_bw()+
-  geom_hline(yintercept=8,color="red")
-
-
-df.all<-read.csv("T:/Benthic/Projects/Juvenile Project/Juvenile_TimeSinceDHW4_8.csv")
-
-dhwcheck<-ddply(df.all,.(ISLAND),
-                   summarize,
-                   DHW4=mean(YearSinceDHW4,na.rm=T),
-                   DHW8=mean(YearSinceDHW8,na.rm=T))
-
-isl<-ddply(juvdata_recent,.(REGION,ISLAND),
-                summarize,
-                x=length(COLONYLENGTH))
-
-dhwcheck<-left_join(dhwcheck,isl)
-
-#We are having issues with Palmyra, King
-ggplot(dhwcheck, aes(x=ISLAND, y=DHW4,fill=REGION)) +
-  geom_bar(stat = "identity", position = position_dodge2(preserve='single'), width = 1, color="black") +
-  facet_grid(~REGION, scales = "free_x", space = "free") +
-  theme_bw()
-
-df2<-read.csv("T:/Benthic/Projects/Juvenile Project/JuvDeltaDen_Pred.csv")
-
-
+write.csv(hs.all,file="Data/outputs/Juvenile_HSTimeline.csv",row.names=FALSE)
 
